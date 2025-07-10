@@ -363,62 +363,63 @@ def create_root_geometry_nodes():
     links.new(resample.outputs['Curve'], duplicate.inputs['Geometry'])
     links.new(group_input.outputs['Count'], duplicate.inputs['Amount'])
 
-    # === FIBONACCI DISTRIBUTION WITH SPREAD ===
+    # === FIBONACCI DISTRIBUTION (AFTER DUPLICATION) ===
+    # These calculations need to happen after duplication to work per-spline
     index = nodes.new('GeometryNodeInputIndex')
-    index.location = (-1000, -200)
+    index.location = (200, -200)
     
     # Convert angles to radians
     to_radians_fib = nodes.new('ShaderNodeMath')
-    to_radians_fib.location = (-1000, -300)
+    to_radians_fib.location = (200, -300)
     to_radians_fib.operation = 'RADIANS'
     links.new(group_input.outputs['Fibonacci Angle'], to_radians_fib.inputs[0])
     
     to_radians_spread = nodes.new('ShaderNodeMath')
-    to_radians_spread.location = (-1000, -400)
+    to_radians_spread.location = (200, -400)
     to_radians_spread.operation = 'RADIANS'
     links.new(group_input.outputs['Spread Angle'], to_radians_spread.inputs[0])
     
     # Calculate fibonacci angle for each root
     mult_angle = nodes.new('ShaderNodeMath')
-    mult_angle.location = (-800, -250)
+    mult_angle.location = (400, -250)
     mult_angle.operation = 'MULTIPLY'
     links.new(index.outputs['Index'], mult_angle.inputs[0])
     links.new(to_radians_fib.outputs['Value'], mult_angle.inputs[1])
     
     # Create radial distribution with spread
     cos_node = nodes.new('ShaderNodeMath')
-    cos_node.location = (-600, -200)
+    cos_node.location = (600, -200)
     cos_node.operation = 'COSINE'
     links.new(mult_angle.outputs['Value'], cos_node.inputs[0])
     
     sin_node = nodes.new('ShaderNodeMath')
-    sin_node.location = (-600, -300)
+    sin_node.location = (600, -300)
     sin_node.operation = 'SINE'
     links.new(mult_angle.outputs['Value'], sin_node.inputs[0])
     
     # Apply spread angle
     mult_cos_spread = nodes.new('ShaderNodeMath')
-    mult_cos_spread.location = (-400, -200)
+    mult_cos_spread.location = (800, -200)
     mult_cos_spread.operation = 'MULTIPLY'
     links.new(cos_node.outputs['Value'], mult_cos_spread.inputs[0])
     links.new(to_radians_spread.outputs['Value'], mult_cos_spread.inputs[1])
     
     mult_sin_spread = nodes.new('ShaderNodeMath')
-    mult_sin_spread.location = (-400, -300)
+    mult_sin_spread.location = (800, -300)
     mult_sin_spread.operation = 'MULTIPLY'
     links.new(sin_node.outputs['Value'], mult_sin_spread.inputs[0])
     links.new(to_radians_spread.outputs['Value'], mult_sin_spread.inputs[1])
     
     # Combine into vector
     combine_fib = nodes.new('ShaderNodeCombineXYZ')
-    combine_fib.location = (-200, -250)
+    combine_fib.location = (1000, -250)
     links.new(mult_cos_spread.outputs['Value'], combine_fib.inputs['X'])
     links.new(mult_sin_spread.outputs['Value'], combine_fib.inputs['Y'])
     combine_fib.inputs['Z'].default_value = 0
     
     # Scale by separation
     scale_sep = nodes.new('ShaderNodeVectorMath')
-    scale_sep.location = (0, -250)
+    scale_sep.location = (1200, -250)
     scale_sep.operation = 'SCALE'
     links.new(combine_fib.outputs['Vector'], scale_sep.inputs[0])
     links.new(group_input.outputs['Separation'], scale_sep.inputs['Scale'])
@@ -595,17 +596,10 @@ def create_root_geometry_nodes():
     links.new(add_offsets.outputs['Vector'], scale_offset_by_growth.inputs[0])
     links.new(final_growth_factor.outputs['Result'], scale_offset_by_growth.inputs['Scale'])
 
-    # Store growth factor as named attribute before applying positions
-    store_growth = nodes.new('GeometryNodeStoreNamedAttribute')
-    store_growth.location = (750, 100)
-    store_growth.data_type = 'FLOAT'
-    store_growth.inputs['Name'].default_value = "growth_factor"
-    links.new(duplicate.outputs['Geometry'], store_growth.inputs['Geometry'])
-    links.new(final_growth_factor.outputs['Result'], store_growth.inputs['Value'])
-
+    # Apply position offsets to each duplicated spline
     set_position = nodes.new('GeometryNodeSetPosition')
     set_position.location = (800, 0)
-    links.new(store_growth.outputs['Geometry'], set_position.inputs['Geometry'])
+    links.new(duplicate.outputs['Geometry'], set_position.inputs['Geometry'])
     links.new(scale_offset_by_growth.outputs['Vector'], set_position.inputs['Offset'])
 
     
