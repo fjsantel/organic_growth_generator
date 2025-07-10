@@ -585,53 +585,9 @@ def create_root_geometry_nodes():
     links.new(subtract.outputs['Vector'], scale_noise.inputs[0])
     links.new(group_input.outputs['Roughness'], scale_noise.inputs['Scale'])
 
-    # === ROTATION FOR SPREAD AND DIRECTION ===
-    # Create rotation based on spread angle and index
-    rotation_z = nodes.new('ShaderNodeCombineXYZ')
-    rotation_z.location = (0, -400)
-    rotation_z.inputs['X'].default_value = 0
-    rotation_z.inputs['Y'].default_value = 0
-    links.new(mult_angle.outputs['Value'], rotation_z.inputs['Z'])
-    
-    # Apply spread rotation based on direction
-    spread_rotation_x = nodes.new('ShaderNodeCombineXYZ')
-    spread_rotation_x.location = (0, -350)
-    
-    # For DOWN/UP: spread in X direction
-    # For RADIAL: no additional spread needed (already handled by fibonacci)
-    compare_radial = nodes.new('ShaderNodeMath')
-    compare_radial.location = (-200, -350)
-    compare_radial.operation = 'COMPARE'
-    links.new(group_input.outputs['Growth Direction'], compare_radial.inputs[0])
-    compare_radial.inputs[1].default_value = 2.0  # RADIAL
-    compare_radial.inputs[2].default_value = 0.001
-    
-    # Switch spread rotation based on direction
-    switch_spread = nodes.new('GeometryNodeSwitch')
-    switch_spread.location = (200, -350)
-    switch_spread.input_type = 'VECTOR'
-    links.new(compare_radial.outputs['Value'], switch_spread.inputs['Switch'])
-    
-    # Non-radial spread
-    links.new(to_radians_spread.outputs['Value'], spread_rotation_x.inputs['X'])
-    spread_rotation_x.inputs['Y'].default_value = 0
-    spread_rotation_x.inputs['Z'].default_value = 0
-    
-    # No spread for radial (use fibonacci only)
-    no_spread = nodes.new('ShaderNodeCombineXYZ')
-    no_spread.location = (0, -450)
-    no_spread.inputs['X'].default_value = 0
-    no_spread.inputs['Y'].default_value = 0
-    no_spread.inputs['Z'].default_value = 0
-    
-    links.new(spread_rotation_x.outputs['Vector'], switch_spread.inputs['False'])
-    links.new(no_spread.outputs['Vector'], switch_spread.inputs['True'])
-    
-    # Combined rotation
-    rotate_euler = nodes.new('FunctionNodeRotateEuler')
-    rotate_euler.location = (400, -400)
-    links.new(rotation_z.outputs['Vector'], rotate_euler.inputs['Rotation'])
-    links.new(switch_spread.outputs['Output'], rotate_euler.inputs['Rotate By'])
+    # === FIBONACCI SPREAD APPLICATION ===
+    # Apply fibonacci distribution with spread angle applied during offset calculation
+    # This is simpler and more reliable than complex rotation nodes
 
     # === SET POSITION WITH ALL DEFORMATIONS ===
     add_offsets = nodes.new('ShaderNodeVectorMath')
@@ -647,44 +603,38 @@ def create_root_geometry_nodes():
     links.new(add_offsets.outputs['Vector'], scale_offset_by_growth.inputs[0])
     links.new(final_growth_factor.outputs['Result'], scale_offset_by_growth.inputs['Scale'])
 
-    # Apply rotations for different growth directions
-    rotate_position = nodes.new('FunctionNodeRotateEuler')
-    rotate_position.location = (800, -150)
-    links.new(scale_offset_by_growth.outputs['Vector'], rotate_position.inputs['Vector'])
-    links.new(rotate_euler.outputs['Vector'], rotate_position.inputs['Rotation'])
-
     set_position = nodes.new('GeometryNodeSetPosition')
-    set_position.location = (900, 0)
+    set_position.location = (800, 0)
     links.new(store_growth.outputs['Geometry'], set_position.inputs['Geometry'])
-    links.new(rotate_position.outputs['Vector'], set_position.inputs['Offset'])
+    links.new(scale_offset_by_growth.outputs['Vector'], set_position.inputs['Offset'])
 
     
 
     # === TAPERING ===
     set_radius = nodes.new('GeometryNodeSetCurveRadius')
-    set_radius.location = (1100, 0)
+    set_radius.location = (1000, 0)
     links.new(set_position.outputs['Geometry'], set_radius.inputs['Curve'])
     
     # Create taper from base to tip
     spline_param_taper = nodes.new('GeometryNodeSplineParameter')
-    spline_param_taper.location = (900, -200)
+    spline_param_taper.location = (800, -200)
     
     # Invert for thick base, thin tip
     invert_taper = nodes.new('ShaderNodeMath')
-    invert_taper.location = (1100, -200)
+    invert_taper.location = (1000, -200)
     invert_taper.operation = 'SUBTRACT'
     invert_taper.inputs[0].default_value = 1.0
     links.new(spline_param_taper.outputs['Factor'], invert_taper.inputs[1])
     
     # Power for more natural taper
     power_taper = nodes.new('ShaderNodeMath')
-    power_taper.location = (1300, -200)
+    power_taper.location = (1200, -200)
     power_taper.operation = 'POWER'
     links.new(invert_taper.outputs['Value'], power_taper.inputs[0])
     power_taper.inputs[1].default_value = 1.5  # Exponent for taper curve
     
     mult_width = nodes.new('ShaderNodeMath')
-    mult_width.location = (1500, -200)
+    mult_width.location = (1400, -200)
     mult_width.operation = 'MULTIPLY'
     links.new(group_input.outputs['Base Width'], mult_width.inputs[0])
     links.new(power_taper.outputs['Value'], mult_width.inputs[1])
@@ -692,10 +642,10 @@ def create_root_geometry_nodes():
     
     # Convert to mesh
     to_mesh = nodes.new('GeometryNodeCurveToMesh')
-    to_mesh.location = (1700, 0)
+    to_mesh.location = (1600, 0)
     
     circle = nodes.new('GeometryNodeCurvePrimitiveCircle')
-    circle.location = (1500, -100)
+    circle.location = (1400, -100)
     circle.inputs['Resolution'].default_value = 8
     links.new(set_radius.outputs['Curve'], to_mesh.inputs['Curve'])
     links.new(circle.outputs['Curve'], to_mesh.inputs['Profile Curve'])
