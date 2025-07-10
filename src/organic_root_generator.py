@@ -424,12 +424,6 @@ def create_root_geometry_nodes():
     links.new(group_input.outputs['Separation'], scale_sep.inputs['Scale'])
 
     # === INDIVIDUAL GROWTH (SIMPLIFIED) ===
-    # Store named attribute for growth
-    store_growth = nodes.new('GeometryNodeStoreNamedAttribute')
-    store_growth.location = (-1000, 0)
-    store_growth.data_type = 'FLOAT'
-    store_growth.inputs['Name'].default_value = "growth_factor"
-    links.new(duplicate.outputs['Geometry'], store_growth.inputs['Geometry'])
 
     # Get growth values based on index
     modulo = nodes.new('ShaderNodeMath')
@@ -539,8 +533,6 @@ def create_root_geometry_nodes():
     links.new(mix_g_combined.outputs['Result'], final_growth_factor.inputs[0])
     links.new(switch_g5.outputs['Output'], final_growth_factor.inputs[1])
 
-    links.new(final_growth_factor.outputs['Result'], store_growth.inputs['Value'])
-
     # === ORGANIC NOISE DEFORMATION ===
     noise = nodes.new('ShaderNodeTexNoise')
     noise.location = (-600, -500)
@@ -602,6 +594,14 @@ def create_root_geometry_nodes():
     scale_offset_by_growth.operation = 'SCALE'
     links.new(add_offsets.outputs['Vector'], scale_offset_by_growth.inputs[0])
     links.new(final_growth_factor.outputs['Result'], scale_offset_by_growth.inputs['Scale'])
+
+    # Store growth factor as named attribute before applying positions
+    store_growth = nodes.new('GeometryNodeStoreNamedAttribute')
+    store_growth.location = (750, 100)
+    store_growth.data_type = 'FLOAT'
+    store_growth.inputs['Name'].default_value = "growth_factor"
+    links.new(duplicate.outputs['Geometry'], store_growth.inputs['Geometry'])
+    links.new(final_growth_factor.outputs['Result'], store_growth.inputs['Value'])
 
     set_position = nodes.new('GeometryNodeSetPosition')
     set_position.location = (800, 0)
@@ -982,6 +982,8 @@ class MESH_OT_add_fibonacci_root(Operator):
             'roughness': 'Roughness',
             'fibonacci_angle': 'Fibonacci Angle',
             'root_separation': 'Separation',
+            'spread_angle': 'Spread Angle',
+            'growth_direction': 'Growth Direction',
             'enable_individual_growth': 'Individual Growth',
             'root_growth_1': 'Growth 1',
             'root_growth_2': 'Growth 2',
@@ -1003,7 +1005,12 @@ class MESH_OT_add_fibonacci_root(Operator):
 
         for prop_name, socket_name in mapping.items():
             if hasattr(props, prop_name) and socket_name in modifier:
-                modifier[socket_name] = getattr(props, prop_name)
+                value = getattr(props, prop_name)
+                # Convert growth_direction enum to int
+                if prop_name == 'growth_direction':
+                    direction_map = {'DOWN': 0, 'UP': 1, 'RADIAL': 2}
+                    value = direction_map.get(value, 0)
+                modifier[socket_name] = value
 
 class MESH_OT_update_fibonacci_root(Operator):
     """Update the active root system"""
