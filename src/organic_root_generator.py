@@ -689,13 +689,13 @@ def create_root_geometry_nodes():
     less_than.inputs[1].default_value = 0.8
     
     # Combine conditions
-    and_node = nodes.new('GeometryNodeBooleanMath')
+    and_node = nodes.new('FunctionNodeBooleanMath')
     and_node.location = (1800, -700)
     and_node.operation = 'AND'
     links.new(greater_than.outputs['Value'], and_node.inputs[0])
     links.new(less_than.outputs['Value'], and_node.inputs[1])
     
-    and_node2 = nodes.new('GeometryNodeBooleanMath')
+    and_node2 = nodes.new('FunctionNodeBooleanMath')
     and_node2.location = (2000, -650)
     and_node2.operation = 'AND'
     links.new(and_node.outputs['Boolean'], and_node2.inputs[0])
