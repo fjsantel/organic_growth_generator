@@ -55,7 +55,10 @@ class FibonacciRootProperties(PropertyGroup):
         items=[
             ('DOWN', "Down", "Roots grow downward"),
             ('UP', "Up", "Roots grow upward"),
-            ('RADIAL', "Radial", "Roots grow outward")
+            ('RADIAL', "Radial", "Roots grow outward"),
+            ('DIAGONAL', "Diagonal", "Roots grow diagonally"),
+            ('MIXED', "Mixed", "Mixed growth directions"),
+            ('SPIRAL', "Spiral", "Spiral growth pattern")
         ],
         default='DOWN',
         update=lambda self, context: update_modifier(self, context)
@@ -108,19 +111,67 @@ class FibonacciRootProperties(PropertyGroup):
         update=lambda self, context: update_modifier(self, context)
     )
 
-    # Individual Growth Controls
+    # ============= INDIVIDUAL GROWTH FIBONACCI =============
     enable_individual_growth: BoolProperty(
-        name="Enable Individual Growth",
-        description="Allow individual control of each root's growth",
+        name="Enable Individual Control",
+        description="Control each root independently",
         default=False,
         update=lambda self, context: update_modifier(self, context)
     )
 
-    root_growth_1: FloatProperty(name="Root 1", default=1.0, min=0.0, max=1.5, update=lambda self, context: update_modifier(self, context))
-    root_growth_2: FloatProperty(name="Root 2", default=1.0, min=0.0, max=1.5, update=lambda self, context: update_modifier(self, context))
-    root_growth_3: FloatProperty(name="Root 3", default=1.0, min=0.0, max=1.5, update=lambda self, context: update_modifier(self, context))
-    root_growth_4: FloatProperty(name="Root 4", default=1.0, min=0.0, max=1.5, update=lambda self, context: update_modifier(self, context))
-    root_growth_5: FloatProperty(name="Root 5", default=1.0, min=0.0, max=1.5, update=lambda self, context: update_modifier(self, context))
+    # Multiplicadores basados en proporción áurea
+    root_growth_1: FloatProperty(
+        name="Root 1 Multiplier",
+        description="Growth multiplier for root 1",
+        default=0.618,  # φ⁻¹ (proporción áurea inversa)
+        min=0.0,
+        max=4.236,  # φ³
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    root_growth_2: FloatProperty(
+        name="Root 2 Multiplier",
+        description="Growth multiplier for root 2",
+        default=1.0,  # Base (normal)
+        min=0.0,
+        max=4.236,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    root_growth_3: FloatProperty(
+        name="Root 3 Multiplier",
+        description="Growth multiplier for root 3",
+        default=1.618,  # φ (proporción áurea)
+        min=0.0,
+        max=4.236,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    root_growth_4: FloatProperty(
+        name="Root 4 Multiplier",
+        description="Growth multiplier for root 4",
+        default=2.618,  # φ²
+        min=0.0,
+        max=4.236,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    root_growth_5: FloatProperty(
+        name="Root 5 Multiplier",
+        description="Growth multiplier for root 5",
+        default=4.236,  # φ³
+        min=0.0,
+        max=4.236,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    # Control de ramificación individual
+    individual_branching: BoolProperty(
+        name="Individual Branching Control",
+        description="Control branching per root independently",
+        default=False,
+        update=lambda self, context: update_modifier(self, context)
+    )
 
     # Secondary Roots
     enable_secondary_roots: BoolProperty(
@@ -132,19 +183,19 @@ class FibonacciRootProperties(PropertyGroup):
 
     secondary_density: FloatProperty(
         name="Density",
-        description="Number of secondary roots",
-        default=20.0,
-        min=0.0,
-        max=100.0,
+        description="Number of secondary branches per main root",
+        default=8.0,  # ✅ CAMBIAR: 20.0 → 8.0 (Fibonacci)
+        min=1.0,
+        max=50.0,
         update=lambda self, context: update_modifier(self, context)
     )
 
     secondary_length: FloatProperty(
         name="Length",
         description="Length of secondary roots",
-        default=1.0,
+        default=3.82,  # ✅ CAMBIAR: 1.0 → 3.82 (Length/φ cuando Length=6.18)
         min=0.1,
-        max=5.0,
+        max=10.0,
         update=lambda self, context: update_modifier(self, context)
     )
 
@@ -176,9 +227,9 @@ class FibonacciRootProperties(PropertyGroup):
 
     tertiary_density: FloatProperty(
         name="Density",
-        description="Number of tertiary roots",
-        default=15.0,
-        min=0.0,
+        description="Number of tertiary branches per secondary",
+        default=13.0,  # ✅ CAMBIAR: 15.0 → 13.0 (Fibonacci)
+        min=1.0,
         max=50.0,
         update=lambda self, context: update_modifier(self, context)
     )
@@ -186,9 +237,9 @@ class FibonacciRootProperties(PropertyGroup):
     tertiary_length: FloatProperty(
         name="Length",
         description="Length of tertiary roots",
-        default=0.3,
-        min=0.01,
-        max=2.0,
+        default=2.36,  # ✅ CAMBIAR: 0.3 → 2.36 (Secondary/φ)
+        min=0.1,
+        max=5.0,
         update=lambda self, context: update_modifier(self, context)
     )
 
@@ -218,6 +269,89 @@ class FibonacciRootProperties(PropertyGroup):
         update=lambda self, context: update_modifier(self, context)
     )
 
+    # ============= CONTROL FIBONACCI EXPONENCIAL =============
+    enable_fibonacci_branching: BoolProperty(
+        name="Enable Fibonacci Branching",
+        description="Activate exponential Fibonacci ramification",
+        default=True,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    fibonacci_depth: IntProperty(
+        name="Fibonacci Depth",
+        description="Maximum levels of Fibonacci branching (3=tertiary, 4=quaternary, etc.)",
+        default=3,
+        min=1,
+        max=6,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    branch_segment_interval: IntProperty(
+        name="Branch Interval",
+        description="Create branches every X segments of growth",
+        default=3,
+        min=1,
+        max=10,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    # Quaternary Roots (Nivel 4) - Solo si depth >= 4
+    enable_quaternary_roots: BoolProperty(
+        name="Enable Quaternary Roots",
+        description="Fourth level of branching",
+        default=False,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    quaternary_density: FloatProperty(
+        name="Quaternary Density",
+        description="Branches per tertiary (Fibonacci: 21)",
+        default=21.0,  # Siguiente número Fibonacci
+        min=1.0,
+        max=50.0,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    quaternary_length: FloatProperty(
+        name="Quaternary Length",
+        description="Length of quaternary roots",
+        default=1.46,  # tertiary_length / φ
+        min=0.1,
+        max=3.0,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    quaternary_width: FloatProperty(
+        name="Quaternary Width",
+        description="Width of quaternary roots",
+        default=0.018,  # tertiary_width / φ
+        min=0.001,
+        max=0.2,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    # ============= CONTROL JERÁRQUICO =============
+    control_mode: EnumProperty(
+        name="Control Mode",
+        description="How to control root growth",
+        items=[
+            ('UNIFIED', "Unified", "All roots grow together (Count + Length)"),
+            ('FIBONACCI', "Fibonacci Auto", "Automatic Fibonacci progression"),
+            ('INDIVIDUAL', "Individual", "Manual control per root"),
+            ('MIXED', "Mixed", "Base controls + individual multipliers")
+        ],
+        default='FIBONACCI',
+        update=lambda self, context: update_modifier(self, context)
+    )
+
+    # Parámetros automáticos Fibonacci
+    auto_fibonacci: BoolProperty(
+        name="Auto Fibonacci Proportions",
+        description="Automatically calculate Fibonacci proportions",
+        default=True,
+        update=lambda self, context: update_modifier(self, context)
+    )
+
 def update_modifier(self, context):
     """Update modifier when properties change"""
     obj = context.active_object
@@ -226,6 +360,8 @@ def update_modifier(self, context):
         if modifier.node_group:
             # Call the function that updates the inputs
             MESH_OT_add_fibonacci_root_system.update_modifier_from_props(modifier, self)
+            # Force viewport update
+            context.view_layer.update()
 
 # ============= GEOMETRY NODES CREATION =============
 def create_root_geometry_nodes():
@@ -290,70 +426,109 @@ def create_root_geometry_nodes():
     # === MAIN ROOTS - GROWTH DIRECTION SYSTEM ===
     # Create initial line
         curve_line = nodes.new('GeometryNodeCurvePrimitiveLine')
-        curve_line.location = (-1600, 0)
+        curve_line.location = (-1400, 0)
         
-    # Growth direction switch nodes
-        switch_down = nodes.new('GeometryNodeSwitch')
-        switch_down.location = (-1800, -200)
-        switch_down.input_type = 'VECTOR'
-        
-        switch_up = nodes.new('GeometryNodeSwitch')
-        switch_up.location = (-1800, -300)
-        switch_up.input_type = 'VECTOR'
-        
-    # Direction vectors
-    # DOWN (0): (0, 0, -length)
+    # Create all direction vectors
+        # DOWN (0): (0, 0, -length)
+        combine_down = nodes.new('ShaderNodeCombineXYZ')
+        combine_down.location = (-1800, -100)
+        combine_down.inputs['X'].default_value = 0
+        combine_down.inputs['Y'].default_value = 0
         negate_length = nodes.new('ShaderNodeMath')
-        negate_length.location = (-2000, -200)
+        negate_length.location = (-1900, -100)
         negate_length.operation = 'MULTIPLY'
         links.new(group_input.outputs['Length'], negate_length.inputs[0])
         negate_length.inputs[1].default_value = -1.0
-        
-        combine_down = nodes.new('ShaderNodeCombineXYZ')
-        combine_down.location = (-1900, -200)
-        combine_down.inputs['X'].default_value = 0
-        combine_down.inputs['Y'].default_value = 0
         links.new(negate_length.outputs['Value'], combine_down.inputs['Z'])
         
-    # UP (1): (0, 0, length)
+        # UP (1): (0, 0, length)
         combine_up = nodes.new('ShaderNodeCombineXYZ')
-        combine_up.location = (-1900, -300)
+        combine_up.location = (-1800, -200)
         combine_up.inputs['X'].default_value = 0
         combine_up.inputs['Y'].default_value = 0
         links.new(group_input.outputs['Length'], combine_up.inputs['Z'])
         
-    # RADIAL (2): (length, 0, 0) - will be rotated later
+        # RADIAL (2): (length, 0, 0)
         combine_radial = nodes.new('ShaderNodeCombineXYZ')
-        combine_radial.location = (-1900, -400)
+        combine_radial.location = (-1800, -300)
         links.new(group_input.outputs['Length'], combine_radial.inputs['X'])
         combine_radial.inputs['Y'].default_value = 0
         combine_radial.inputs['Z'].default_value = 0
         
-    # Compare growth direction
-        compare_down = nodes.new('ShaderNodeMath')
-        compare_down.location = (-1700, -150)
-        compare_down.operation = 'COMPARE'
-        links.new(group_input.outputs['Growth Direction'], compare_down.inputs[0])
-        compare_down.inputs[1].default_value = 0.0  # DOWN
-        compare_down.inputs[2].default_value = 0.001
+        # DIAGONAL (3): (length*0.7, 0, -length*0.7)
+        combine_diagonal = nodes.new('ShaderNodeCombineXYZ')
+        combine_diagonal.location = (-1800, -400)
+        diagonal_x = nodes.new('ShaderNodeMath')
+        diagonal_x.location = (-1900, -400)
+        diagonal_x.operation = 'MULTIPLY'
+        links.new(group_input.outputs['Length'], diagonal_x.inputs[0])
+        diagonal_x.inputs[1].default_value = 0.7
+        links.new(diagonal_x.outputs['Value'], combine_diagonal.inputs['X'])
+        combine_diagonal.inputs['Y'].default_value = 0
+        diagonal_z = nodes.new('ShaderNodeMath')
+        diagonal_z.location = (-1900, -450)
+        diagonal_z.operation = 'MULTIPLY'
+        links.new(group_input.outputs['Length'], diagonal_z.inputs[0])
+        diagonal_z.inputs[1].default_value = -0.7
+        links.new(diagonal_z.outputs['Value'], combine_diagonal.inputs['Z'])
         
-        compare_up = nodes.new('ShaderNodeMath')
-        compare_up.location = (-1700, -250)
-        compare_up.operation = 'COMPARE'
-        links.new(group_input.outputs['Growth Direction'], compare_up.inputs[0])
-        compare_up.inputs[1].default_value = 1.0  # UP
-        compare_up.inputs[2].default_value = 0.001
+        # MIXED (4): Will use random selection between vectors
+        # SPIRAL (5): Will use rotating radial vector
         
-    # Switch between directions
-        links.new(compare_down.outputs['Value'], switch_down.inputs['Switch'])
-        links.new(combine_down.outputs['Vector'], switch_down.inputs['True'])
-        links.new(combine_up.outputs['Vector'], switch_down.inputs['False'])
+    # Create proper switch logic for direction selection using existing Switch nodes
+        # Compare growth direction values
+        compare_down = nodes.new('FunctionNodeCompare')
+        compare_down.location = (-1700, -100)
+        compare_down.data_type = 'FLOAT'
+        compare_down.operation = 'EQUAL'
+        links.new(group_input.outputs['Growth Direction'], compare_down.inputs['A'])
+        compare_down.inputs['B'].default_value = 0.0  # DOWN
         
-        links.new(compare_up.outputs['Value'], switch_up.inputs['Switch'])
-        links.new(switch_down.outputs['Output'], switch_up.inputs['False'])
-        links.new(combine_radial.outputs['Vector'], switch_up.inputs['True'])
+        compare_up = nodes.new('FunctionNodeCompare')
+        compare_up.location = (-1700, -200)
+        compare_up.data_type = 'FLOAT'
+        compare_up.operation = 'EQUAL'
+        links.new(group_input.outputs['Growth Direction'], compare_up.inputs['A'])
+        compare_up.inputs['B'].default_value = 1.0  # UP
         
-        links.new(switch_up.outputs['Output'], curve_line.inputs['End'])
+        compare_radial = nodes.new('FunctionNodeCompare')
+        compare_radial.location = (-1700, -300)
+        compare_radial.data_type = 'FLOAT'
+        compare_radial.operation = 'EQUAL'
+        links.new(group_input.outputs['Growth Direction'], compare_radial.inputs['A'])
+        compare_radial.inputs['B'].default_value = 2.0  # RADIAL
+        
+        compare_diagonal = nodes.new('FunctionNodeCompare')
+        compare_diagonal.location = (-1700, -400)
+        compare_diagonal.data_type = 'FLOAT'
+        compare_diagonal.operation = 'EQUAL'
+        links.new(group_input.outputs['Growth Direction'], compare_diagonal.inputs['A'])
+        compare_diagonal.inputs['B'].default_value = 3.0  # DIAGONAL
+        
+        # Create cascading switches for direction selection
+        switch_down_up = nodes.new('GeometryNodeSwitch')
+        switch_down_up.location = (-1500, -150)
+        switch_down_up.input_type = 'VECTOR'
+        links.new(compare_down.outputs['Result'], switch_down_up.inputs['Switch'])
+        links.new(combine_up.outputs['Vector'], switch_down_up.inputs['False'])
+        links.new(combine_down.outputs['Vector'], switch_down_up.inputs['True'])
+        
+        switch_radial = nodes.new('GeometryNodeSwitch')
+        switch_radial.location = (-1300, -200)
+        switch_radial.input_type = 'VECTOR'
+        links.new(compare_radial.outputs['Result'], switch_radial.inputs['Switch'])
+        links.new(switch_down_up.outputs['Output'], switch_radial.inputs['False'])
+        links.new(combine_radial.outputs['Vector'], switch_radial.inputs['True'])
+        
+        switch_diagonal = nodes.new('GeometryNodeSwitch')
+        switch_diagonal.location = (-1100, -250)
+        switch_diagonal.input_type = 'VECTOR'
+        links.new(compare_diagonal.outputs['Result'], switch_diagonal.inputs['Switch'])
+        links.new(switch_radial.outputs['Output'], switch_diagonal.inputs['False'])
+        links.new(combine_diagonal.outputs['Vector'], switch_diagonal.inputs['True'])
+        
+        # Connect final direction to curve
+        links.new(switch_diagonal.outputs['Output'], curve_line.inputs['End'])
         
     # Resample for smoothness
         resample = nodes.new('GeometryNodeResampleCurve')
@@ -406,18 +581,33 @@ def create_root_geometry_nodes():
         sin_fib.operation = 'SINE'
         links.new(mult_angle.outputs['Value'], sin_fib.inputs[0])
         
-    # Scale by separation distance
+    # Scale by separation distance with intelligent clamping
+        # Clamp separation to prevent disconnection (min 0.05, max 2.0)
+        clamp_separation = nodes.new('ShaderNodeClamp')
+        clamp_separation.location = (-500, -300)
+        clamp_separation.clamp_type = 'MINMAX'
+        links.new(group_input.outputs['Separation'], clamp_separation.inputs['Value'])
+        clamp_separation.inputs['Min'].default_value = 0.05  # Minimum separation
+        clamp_separation.inputs['Max'].default_value = 2.0   # Maximum separation
+        
+        # Add minimum radius to keep roots connected
+        min_radius = nodes.new('ShaderNodeMath')
+        min_radius.location = (-500, -350)
+        min_radius.operation = 'ADD'
+        links.new(clamp_separation.outputs['Result'], min_radius.inputs[0])
+        min_radius.inputs[1].default_value = 0.1  # Minimum radius for connection
+        
         mult_cos_sep = nodes.new('ShaderNodeMath')
         mult_cos_sep.location = (-400, -400)
         mult_cos_sep.operation = 'MULTIPLY'
         links.new(cos_fib.outputs['Value'], mult_cos_sep.inputs[0])
-        links.new(group_input.outputs['Separation'], mult_cos_sep.inputs[1])
+        links.new(min_radius.outputs['Value'], mult_cos_sep.inputs[1])
         
         mult_sin_sep = nodes.new('ShaderNodeMath')
         mult_sin_sep.location = (-400, -500)
         mult_sin_sep.operation = 'MULTIPLY'
         links.new(sin_fib.outputs['Value'], mult_sin_sep.inputs[0])
-        links.new(group_input.outputs['Separation'], mult_sin_sep.inputs[1])
+        links.new(min_radius.outputs['Value'], mult_sin_sep.inputs[1])
         
     # Combine into position vector
         combine_fib_pos = nodes.new('ShaderNodeCombineXYZ')
@@ -443,11 +633,25 @@ def create_root_geometry_nodes():
         combine_scale.location = (200, 100)
         combine_scale.inputs['X'].default_value = 1.0
         combine_scale.inputs['Y'].default_value = 1.0
-        combine_scale.inputs['Z'].default_value = 1.0  # ✅ CRÍTICO: Era 0, ahora 1.0
+        combine_scale.inputs['Z'].default_value = 1.0
         links.new(combine_scale.outputs['Vector'], scale_curve.inputs['Scale'])
         
     # === APPLY ROTATION FOR GROWTH DIRECTION AND SPREAD ===
-    # Check if growth direction is RADIAL (2)
+    # Apply spread angle to ALL growth directions, not just radial
+        to_radians_spread = nodes.new('ShaderNodeMath')
+        to_radians_spread.location = (200, -200)
+        to_radians_spread.operation = 'RADIANS'
+        links.new(group_input.outputs['Spread Angle'], to_radians_spread.inputs[0])
+        
+    # For fibonacci rotation around Y-axis
+        mult_fib_rotation = nodes.new('ShaderNodeMath')
+        mult_fib_rotation.location = (200, -400)
+        mult_fib_rotation.operation = 'MULTIPLY'
+        links.new(point_index.outputs['Index'], mult_fib_rotation.inputs[0])
+        links.new(to_radians_fib.outputs['Value'], mult_fib_rotation.inputs[1])
+        
+    # Create rotation based on growth direction
+        # Check if growth direction is RADIAL (2)
         is_radial = nodes.new('ShaderNodeMath')
         is_radial.location = (200, -300)
         is_radial.operation = 'COMPARE'
@@ -455,40 +659,57 @@ def create_root_geometry_nodes():
         is_radial.inputs[1].default_value = 2.0  # RADIAL
         is_radial.inputs[2].default_value = 0.001
         
-    # For radial growth, use fibonacci angle for Y rotation
-        mult_fib_rotation = nodes.new('ShaderNodeMath')
-        mult_fib_rotation.location = (200, -400)
-        mult_fib_rotation.operation = 'MULTIPLY'
-        links.new(point_index.outputs['Index'], mult_fib_rotation.inputs[0])
-        links.new(to_radians_fib.outputs['Value'], mult_fib_rotation.inputs[1])
+        # Check if growth direction is DIAGONAL (3)
+        is_diagonal = nodes.new('ShaderNodeMath')
+        is_diagonal.location = (200, -350)
+        is_diagonal.operation = 'COMPARE'
+        links.new(group_input.outputs['Growth Direction'], is_diagonal.inputs[0])
+        is_diagonal.inputs[1].default_value = 3.0  # DIAGONAL
+        is_diagonal.inputs[2].default_value = 0.001
         
-    # Apply spread angle to rotation
-        to_radians_spread = nodes.new('ShaderNodeMath')
-        to_radians_spread.location = (200, -200)
-        to_radians_spread.operation = 'RADIANS'
-        links.new(group_input.outputs['Spread Angle'], to_radians_spread.inputs[0])
-        
-    # Combine rotations for radial mode
+    # Combine rotations for radial mode (spread + fibonacci)
         combine_rotation_radial = nodes.new('ShaderNodeCombineXYZ')
         combine_rotation_radial.location = (400, -350)
-        links.new(to_radians_spread.outputs['Value'], combine_rotation_radial.inputs['X'])  # Tilt down
+        links.new(to_radians_spread.outputs['Value'], combine_rotation_radial.inputs['X'])  # Tilt
         links.new(mult_fib_rotation.outputs['Value'], combine_rotation_radial.inputs['Y'])  # Rotate around Y
         combine_rotation_radial.inputs['Z'].default_value = 0
         
-    # For DOWN/UP growth, NO rotation - let the curve direction work naturally
+    # For DOWN/UP growth, apply spread angle as slight variation
         combine_rotation_normal = nodes.new('ShaderNodeCombineXYZ')
         combine_rotation_normal.location = (400, -250)
-        combine_rotation_normal.inputs['X'].default_value = 0
-        combine_rotation_normal.inputs['Y'].default_value = 0
+        # Add small random variation based on spread angle
+        spread_variation = nodes.new('ShaderNodeMath')
+        spread_variation.location = (300, -200)
+        spread_variation.operation = 'MULTIPLY'
+        links.new(to_radians_spread.outputs['Value'], spread_variation.inputs[0])
+        spread_variation.inputs[1].default_value = 0.3  # Reduce spread effect for UP/DOWN
+        links.new(spread_variation.outputs['Value'], combine_rotation_normal.inputs['X'])
+        links.new(mult_fib_rotation.outputs['Value'], combine_rotation_normal.inputs['Y'])
         combine_rotation_normal.inputs['Z'].default_value = 0
         
-    # Switch between radial and normal rotation
-        switch_rotation = nodes.new('GeometryNodeSwitch')
-        switch_rotation.location = (600, -300)
-        switch_rotation.input_type = 'VECTOR'
-        links.new(is_radial.outputs['Value'], switch_rotation.inputs['Switch'])
-        links.new(combine_rotation_normal.outputs['Vector'], switch_rotation.inputs['False'])
-        links.new(combine_rotation_radial.outputs['Vector'], switch_rotation.inputs['True'])
+    # For diagonal growth, use full spread angle
+        combine_rotation_diagonal = nodes.new('ShaderNodeCombineXYZ')
+        combine_rotation_diagonal.location = (400, -450)
+        links.new(to_radians_spread.outputs['Value'], combine_rotation_diagonal.inputs['X'])
+        links.new(mult_fib_rotation.outputs['Value'], combine_rotation_diagonal.inputs['Y'])
+        combine_rotation_diagonal.inputs['Z'].default_value = 0
+        
+    # Switch between rotation modes
+        switch_rotation_1 = nodes.new('GeometryNodeSwitch')
+        switch_rotation_1.location = (600, -300)
+        switch_rotation_1.input_type = 'VECTOR'
+        links.new(is_radial.outputs['Value'], switch_rotation_1.inputs['Switch'])
+        links.new(combine_rotation_normal.outputs['Vector'], switch_rotation_1.inputs['False'])
+        links.new(combine_rotation_radial.outputs['Vector'], switch_rotation_1.inputs['True'])
+        
+        switch_rotation_2 = nodes.new('GeometryNodeSwitch')
+        switch_rotation_2.location = (800, -300)
+        switch_rotation_2.input_type = 'VECTOR'
+        links.new(is_diagonal.outputs['Value'], switch_rotation_2.inputs['Switch'])
+        links.new(switch_rotation_1.outputs['Output'], switch_rotation_2.inputs['False'])
+        links.new(combine_rotation_diagonal.outputs['Vector'], switch_rotation_2.inputs['True'])
+        
+        switch_rotation = switch_rotation_2  # Final rotation switch
         
     # === INSTANCE CURVES ON FIBONACCI POINTS ===
         instance_curves = nodes.new('GeometryNodeInstanceOnPoints')
@@ -583,37 +804,77 @@ def create_root_geometry_nodes():
         switch_g5.inputs['False'].default_value = 1.0
         links.new(group_input.outputs['Growth 5'], switch_g5.inputs['True'])
 
-    # Combine growth values using a series of Mix nodes
-        mix_g1_g2 = nodes.new('ShaderNodeMix')
-        mix_g1_g2.location = (-400, 100)
-        mix_g1_g2.data_type = 'FLOAT'
-        links.new(compare_0.outputs['Value'], mix_g1_g2.inputs['Factor'])
-        links.new(switch_g1.outputs['Output'], mix_g1_g2.inputs[0])
-        links.new(switch_g2.outputs['Output'], mix_g1_g2.inputs[1])
-
-        mix_g3_g4 = nodes.new('ShaderNodeMix')
-        mix_g3_g4.location = (-400, 0)
-        mix_g3_g4.data_type = 'FLOAT'
-        links.new(compare_2.outputs['Value'], mix_g3_g4.inputs['Factor'])
-        links.new(switch_g3.outputs['Output'], mix_g3_g4.inputs[0])
-        links.new(switch_g4.outputs['Output'], mix_g3_g4.inputs[1])
-
-        mix_g_combined = nodes.new('ShaderNodeMix')
-        mix_g_combined.location = (-200, 50)
-        mix_g_combined.data_type = 'FLOAT'
-        links.new(compare_1.outputs['Value'], mix_g_combined.inputs['Factor'])
-        links.new(mix_g1_g2.outputs['Result'], mix_g_combined.inputs[0])
-        links.new(mix_g3_g4.outputs['Result'], mix_g_combined.inputs[1])
-
-        final_growth_factor = nodes.new('ShaderNodeMix')
-        final_growth_factor.location = (0, 0)
-        final_growth_factor.data_type = 'FLOAT'
-        links.new(compare_4.outputs['Value'], final_growth_factor.inputs['Factor'])
-        links.new(mix_g_combined.outputs['Result'], final_growth_factor.inputs[0])
-        links.new(switch_g5.outputs['Output'], final_growth_factor.inputs[1])
+    # Use cascading switches for growth value selection
+        # Create switches for each growth value based on modulo result
+        switch_growth_0 = nodes.new('GeometryNodeSwitch')
+        switch_growth_0.location = (-400, 150)
+        switch_growth_0.input_type = 'FLOAT'
+        links.new(compare_0.outputs['Value'], switch_growth_0.inputs['Switch'])
+        switch_growth_0.inputs['False'].default_value = 0.0
+        links.new(switch_g1.outputs['Output'], switch_growth_0.inputs['True'])
         
-    # Connect individual growth to curve scaling
-        links.new(final_growth_factor.outputs['Result'], combine_scale.inputs['Z'])
+        switch_growth_1 = nodes.new('GeometryNodeSwitch')
+        switch_growth_1.location = (-400, 100)
+        switch_growth_1.input_type = 'FLOAT'
+        links.new(compare_1.outputs['Value'], switch_growth_1.inputs['Switch'])
+        switch_growth_1.inputs['False'].default_value = 0.0
+        links.new(switch_g2.outputs['Output'], switch_growth_1.inputs['True'])
+        
+        switch_growth_2 = nodes.new('GeometryNodeSwitch')
+        switch_growth_2.location = (-400, 50)
+        switch_growth_2.input_type = 'FLOAT'
+        links.new(compare_2.outputs['Value'], switch_growth_2.inputs['Switch'])
+        switch_growth_2.inputs['False'].default_value = 0.0
+        links.new(switch_g3.outputs['Output'], switch_growth_2.inputs['True'])
+        
+        switch_growth_3 = nodes.new('GeometryNodeSwitch')
+        switch_growth_3.location = (-400, 0)
+        switch_growth_3.input_type = 'FLOAT'
+        links.new(compare_3.outputs['Value'], switch_growth_3.inputs['Switch'])
+        switch_growth_3.inputs['False'].default_value = 0.0
+        links.new(switch_g4.outputs['Output'], switch_growth_3.inputs['True'])
+        
+        switch_growth_4 = nodes.new('GeometryNodeSwitch')
+        switch_growth_4.location = (-400, -50)
+        switch_growth_4.input_type = 'FLOAT'
+        links.new(compare_4.outputs['Value'], switch_growth_4.inputs['Switch'])
+        switch_growth_4.inputs['False'].default_value = 0.0
+        links.new(switch_g5.outputs['Output'], switch_growth_4.inputs['True'])
+        
+        # Add all individual growth values together (only one will be non-zero)
+        add_growth_01 = nodes.new('ShaderNodeMath')
+        add_growth_01.location = (-200, 125)
+        add_growth_01.operation = 'ADD'
+        links.new(switch_growth_0.outputs['Output'], add_growth_01.inputs[0])
+        links.new(switch_growth_1.outputs['Output'], add_growth_01.inputs[1])
+        
+        add_growth_23 = nodes.new('ShaderNodeMath')
+        add_growth_23.location = (-200, 25)
+        add_growth_23.operation = 'ADD'
+        links.new(switch_growth_2.outputs['Output'], add_growth_23.inputs[0])
+        links.new(switch_growth_3.outputs['Output'], add_growth_23.inputs[1])
+        
+        add_growth_combined = nodes.new('ShaderNodeMath')
+        add_growth_combined.location = (-100, 75)
+        add_growth_combined.operation = 'ADD'
+        links.new(add_growth_01.outputs['Value'], add_growth_combined.inputs[0])
+        links.new(add_growth_23.outputs['Value'], add_growth_combined.inputs[1])
+        
+        final_growth_factor = nodes.new('ShaderNodeMath')
+        final_growth_factor.location = (0, 50)
+        final_growth_factor.operation = 'ADD'
+        links.new(add_growth_combined.outputs['Value'], final_growth_factor.inputs[0])
+        links.new(switch_growth_4.outputs['Output'], final_growth_factor.inputs[1])
+        
+    # Connect individual growth to curve scaling - Fixed to actually work
+        # Use a switch to enable/disable individual growth
+        growth_switch = nodes.new('GeometryNodeSwitch')
+        growth_switch.location = (200, 0)
+        growth_switch.input_type = 'FLOAT'
+        links.new(group_input.outputs['Individual Growth'], growth_switch.inputs['Switch'])
+        growth_switch.inputs['False'].default_value = 1.0  # Default scale when individual growth is off
+        links.new(final_growth_factor.outputs['Value'], growth_switch.inputs['True'])
+        links.new(growth_switch.outputs['Output'], combine_scale.inputs['Z'])
 
     # === ORGANIC NOISE DEFORMATION (SIMPLIFIED) ===
         noise = nodes.new('ShaderNodeTexNoise')
@@ -942,22 +1203,33 @@ def create_root_geometry_nodes():
         instance_leaves.inputs['Scale'].default_value = (0.3, 0.3, 0.3)
 
     # === SWITCHES FOR FEATURES ===
+        # Create empty geometry for when features are disabled
+        empty_geometry = nodes.new('GeometryNodeMeshGrid')
+        empty_geometry.location = (3200, -600)
+        empty_geometry.inputs['Size X'].default_value = 0
+        empty_geometry.inputs['Size Y'].default_value = 0
+        empty_geometry.inputs['Vertices X'].default_value = 0
+        empty_geometry.inputs['Vertices Y'].default_value = 0
+        
         switch_secondary = nodes.new('GeometryNodeSwitch')
         switch_secondary.location = (3400, -400)
         switch_secondary.input_type = 'GEOMETRY'
         links.new(group_input.outputs['Enable Secondary'], switch_secondary.inputs['Switch'])
+        links.new(empty_geometry.outputs['Mesh'], switch_secondary.inputs['False'])  # Empty when disabled
         links.new(to_mesh_sec.outputs['Mesh'], switch_secondary.inputs['True'])
         
         switch_tertiary = nodes.new('GeometryNodeSwitch')
         switch_tertiary.location = (4600, -800)
         switch_tertiary.input_type = 'GEOMETRY'
         links.new(group_input.outputs['Enable Tertiary'], switch_tertiary.inputs['Switch'])
+        links.new(empty_geometry.outputs['Mesh'], switch_tertiary.inputs['False'])  # Empty when disabled
         links.new(to_mesh_ter.outputs['Mesh'], switch_tertiary.inputs['True'])
         
         switch_leaves = nodes.new('GeometryNodeSwitch')
         switch_leaves.location = (4400, 400)
         switch_leaves.input_type = 'GEOMETRY'
         links.new(group_input.outputs['Enable Leaves'], switch_leaves.inputs['Switch'])
+        links.new(empty_geometry.outputs['Mesh'], switch_leaves.inputs['False'])  # Empty when disabled
         links.new(instance_leaves.outputs['Instances'], switch_leaves.inputs['True'])
 
     # === FINAL JOIN ===
@@ -1062,7 +1334,7 @@ class MESH_OT_add_fibonacci_root_system(Operator):
                 value = getattr(props, prop_name)
                 # Convert growth_direction enum to int
                 if prop_name == 'growth_direction':
-                    direction_map = {'DOWN': 0, 'UP': 1, 'RADIAL': 2}
+                    direction_map = {'DOWN': 0, 'UP': 1, 'RADIAL': 2, 'DIAGONAL': 3, 'MIXED': 4, 'SPIRAL': 5}
                     value = direction_map.get(value, 0)
                 modifier[socket_name] = value
 
