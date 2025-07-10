@@ -356,74 +356,86 @@ def create_root_geometry_nodes():
     resample.inputs['Count'].default_value = 50
     links.new(curve_line.outputs['Curve'], resample.inputs['Curve'])
     
-    # Duplicate for multiple roots
-    duplicate = nodes.new('GeometryNodeDuplicateElements')
-    duplicate.location = (-1200, 0)
-    duplicate.domain = 'SPLINE'
-    links.new(resample.outputs['Curve'], duplicate.inputs['Geometry'])
-    links.new(group_input.outputs['Count'], duplicate.inputs['Amount'])
-
-    # === TRANSFORM PER SPLINE (SIMPLE APPROACH) ===
-    # For each duplicated spline, apply transform based on spline index
-    spline_index = nodes.new('GeometryNodeInputIndex')
-    spline_index.location = (200, -200)
+    # === FIBONACCI DISTRIBUTION POINTS ===
+    # Create points in Fibonacci spiral for instancing
+    mesh_grid = nodes.new('GeometryNodeMeshGrid')
+    mesh_grid.location = (-1200, -300)
+    mesh_grid.inputs['Size X'].default_value = 0.1
+    mesh_grid.inputs['Size Y'].default_value = 0.1
+    mesh_grid.inputs['Vertices X'].default_value = 1
+    mesh_grid.inputs['Vertices Y'].default_value = 1
+    
+    # Duplicate the single point to get multiple instances
+    duplicate_points = nodes.new('GeometryNodeDuplicateElements')
+    duplicate_points.location = (-1000, -300)
+    duplicate_points.domain = 'POINT'
+    links.new(mesh_grid.outputs['Mesh'], duplicate_points.inputs['Geometry'])
+    links.new(group_input.outputs['Count'], duplicate_points.inputs['Amount'])
+    
+    # Calculate Fibonacci positions for each point
+    point_index = nodes.new('GeometryNodeInputIndex')
+    point_index.location = (-800, -400)
     
     # Convert angles to radians
     to_radians_fib = nodes.new('ShaderNodeMath')
-    to_radians_fib.location = (200, -300)
+    to_radians_fib.location = (-800, -500)
     to_radians_fib.operation = 'RADIANS'
     links.new(group_input.outputs['Fibonacci Angle'], to_radians_fib.inputs[0])
     
-    to_radians_spread = nodes.new('ShaderNodeMath')
-    to_radians_spread.location = (200, -400)
-    to_radians_spread.operation = 'RADIANS'
-    links.new(group_input.outputs['Spread Angle'], to_radians_spread.inputs[0])
-    
-    # Calculate fibonacci angle for each spline
+    # Calculate fibonacci angle for each point
     mult_angle = nodes.new('ShaderNodeMath')
-    mult_angle.location = (400, -250)
+    mult_angle.location = (-600, -450)
     mult_angle.operation = 'MULTIPLY'
-    links.new(spline_index.outputs['Index'], mult_angle.inputs[0])
+    links.new(point_index.outputs['Index'], mult_angle.inputs[0])
     links.new(to_radians_fib.outputs['Value'], mult_angle.inputs[1])
     
-    # Create offset based on spline index for separation
-    cos_node = nodes.new('ShaderNodeMath')
-    cos_node.location = (600, -200)
-    cos_node.operation = 'COSINE'
-    links.new(mult_angle.outputs['Value'], cos_node.inputs[0])
+    # Create Fibonacci spiral positions
+    cos_fib = nodes.new('ShaderNodeMath')
+    cos_fib.location = (-400, -400)
+    cos_fib.operation = 'COSINE'
+    links.new(mult_angle.outputs['Value'], cos_fib.inputs[0])
     
-    sin_node = nodes.new('ShaderNodeMath')
-    sin_node.location = (600, -300)
-    sin_node.operation = 'SINE'
-    links.new(mult_angle.outputs['Value'], sin_node.inputs[0])
+    sin_fib = nodes.new('ShaderNodeMath')
+    sin_fib.location = (-400, -500)
+    sin_fib.operation = 'SINE'
+    links.new(mult_angle.outputs['Value'], sin_fib.inputs[0])
     
-    # Apply spread and separation
+    # Scale by separation distance
     mult_cos_sep = nodes.new('ShaderNodeMath')
-    mult_cos_sep.location = (800, -200)
+    mult_cos_sep.location = (-200, -400)
     mult_cos_sep.operation = 'MULTIPLY'
-    links.new(cos_node.outputs['Value'], mult_cos_sep.inputs[0])
+    links.new(cos_fib.outputs['Value'], mult_cos_sep.inputs[0])
     links.new(group_input.outputs['Separation'], mult_cos_sep.inputs[1])
     
     mult_sin_sep = nodes.new('ShaderNodeMath')
-    mult_sin_sep.location = (800, -300)
+    mult_sin_sep.location = (-200, -500)
     mult_sin_sep.operation = 'MULTIPLY'
-    links.new(sin_node.outputs['Value'], mult_sin_sep.inputs[0])
+    links.new(sin_fib.outputs['Value'], mult_sin_sep.inputs[0])
     links.new(group_input.outputs['Separation'], mult_sin_sep.inputs[1])
     
-    # Combine into offset vector
-    combine_offset = nodes.new('ShaderNodeCombineXYZ')
-    combine_offset.location = (1000, -250)
-    links.new(mult_cos_sep.outputs['Value'], combine_offset.inputs['X'])
-    links.new(mult_sin_sep.outputs['Value'], combine_offset.inputs['Y'])
-    combine_offset.inputs['Z'].default_value = 0
+    # Combine into position vector
+    combine_fib_pos = nodes.new('ShaderNodeCombineXYZ')
+    combine_fib_pos.location = (0, -450)
+    links.new(mult_cos_sep.outputs['Value'], combine_fib_pos.inputs['X'])
+    links.new(mult_sin_sep.outputs['Value'], combine_fib_pos.inputs['Y'])
+    combine_fib_pos.inputs['Z'].default_value = 0
     
-    # This is our base separation offset
-    scale_sep = nodes.new('ShaderNodeVectorMath')
-    scale_sep.location = (1200, -250)
-    scale_sep.operation = 'SCALE'
-    links.new(combine_offset.outputs['Vector'], scale_sep.inputs[0])
-    # Scale factor to adjust overall separation
-    scale_sep.inputs['Scale'].default_value = 1.0
+    # Set positions of points in Fibonacci pattern
+    set_fib_pos = nodes.new('GeometryNodeSetPosition')
+    set_fib_pos.location = (200, -300)
+    links.new(duplicate_points.outputs['Geometry'], set_fib_pos.inputs['Geometry'])
+    links.new(combine_fib_pos.outputs['Vector'], set_fib_pos.inputs['Position'])
+    
+    # === INSTANCE CURVES ON FIBONACCI POINTS ===
+    instance_curves = nodes.new('GeometryNodeInstanceOnPoints')
+    instance_curves.location = (400, 0)
+    links.new(set_fib_pos.outputs['Geometry'], instance_curves.inputs['Points'])
+    links.new(resample.outputs['Curve'], instance_curves.inputs['Instance'])
+    
+    # Realize instances to get actual geometry
+    realize_instances = nodes.new('GeometryNodeRealizeInstances')
+    realize_instances.location = (600, 0)
+    links.new(instance_curves.outputs['Instances'], realize_instances.inputs['Geometry'])
 
     # === INDIVIDUAL GROWTH (SIMPLIFIED) ===
 
@@ -431,7 +443,7 @@ def create_root_geometry_nodes():
     modulo = nodes.new('ShaderNodeMath')
     modulo.location = (-1200, -100)
     modulo.operation = 'MODULO'
-    links.new(spline_index.outputs['Index'], modulo.inputs[0])
+    links.new(point_index.outputs['Index'], modulo.inputs[0])
     modulo.inputs[1].default_value = 5.0 # Cycle through 5 growth values
 
     # Compare nodes to check which root index it is
@@ -579,39 +591,39 @@ def create_root_geometry_nodes():
     links.new(add_offsets.outputs['Vector'], scale_offset_by_growth.inputs[0])
     links.new(final_growth_factor.outputs['Result'], scale_offset_by_growth.inputs['Scale'])
 
-    # Apply position offsets to each duplicated spline
-    set_position = nodes.new('GeometryNodeSetPosition')
-    set_position.location = (2400, 0)
-    links.new(duplicate.outputs['Geometry'], set_position.inputs['Geometry'])
-    links.new(scale_offset_by_growth.outputs['Vector'], set_position.inputs['Offset'])
+    # Apply noise deformation to the realized curves
+    noise_position = nodes.new('GeometryNodeSetPosition')
+    noise_position.location = (800, 0)
+    links.new(realize_instances.outputs['Geometry'], noise_position.inputs['Geometry'])
+    links.new(scale_noise.outputs['Vector'], noise_position.inputs['Offset'])
 
     
 
     # === TAPERING ===
     set_radius = nodes.new('GeometryNodeSetCurveRadius')
-    set_radius.location = (2600, 0)
-    links.new(set_position.outputs['Geometry'], set_radius.inputs['Curve'])
+    set_radius.location = (1000, 0)
+    links.new(noise_position.outputs['Geometry'], set_radius.inputs['Curve'])
     
     # Create taper from base to tip
     spline_param_taper = nodes.new('GeometryNodeSplineParameter')
-    spline_param_taper.location = (2400, -200)
+    spline_param_taper.location = (800, -200)
     
     # Invert for thick base, thin tip
     invert_taper = nodes.new('ShaderNodeMath')
-    invert_taper.location = (2600, -200)
+    invert_taper.location = (1000, -200)
     invert_taper.operation = 'SUBTRACT'
     invert_taper.inputs[0].default_value = 1.0
     links.new(spline_param_taper.outputs['Factor'], invert_taper.inputs[1])
     
     # Power for more natural taper
     power_taper = nodes.new('ShaderNodeMath')
-    power_taper.location = (2800, -200)
+    power_taper.location = (1200, -200)
     power_taper.operation = 'POWER'
     links.new(invert_taper.outputs['Value'], power_taper.inputs[0])
     power_taper.inputs[1].default_value = 1.5  # Exponent for taper curve
     
     mult_width = nodes.new('ShaderNodeMath')
-    mult_width.location = (3000, -200)
+    mult_width.location = (1400, -200)
     mult_width.operation = 'MULTIPLY'
     links.new(group_input.outputs['Base Width'], mult_width.inputs[0])
     links.new(power_taper.outputs['Value'], mult_width.inputs[1])
@@ -619,10 +631,10 @@ def create_root_geometry_nodes():
     
     # Convert to mesh
     to_mesh = nodes.new('GeometryNodeCurveToMesh')
-    to_mesh.location = (3200, 0)
+    to_mesh.location = (1600, 0)
     
     circle = nodes.new('GeometryNodeCurvePrimitiveCircle')
-    circle.location = (3000, -100)
+    circle.location = (1400, -100)
     circle.inputs['Resolution'].default_value = 8
     links.new(set_radius.outputs['Curve'], to_mesh.inputs['Curve'])
     links.new(circle.outputs['Curve'], to_mesh.inputs['Profile Curve'])
