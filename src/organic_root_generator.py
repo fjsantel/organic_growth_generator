@@ -363,10 +363,10 @@ def create_root_geometry_nodes():
     links.new(resample.outputs['Curve'], duplicate.inputs['Geometry'])
     links.new(group_input.outputs['Count'], duplicate.inputs['Amount'])
 
-    # === FIBONACCI DISTRIBUTION (AFTER DUPLICATION) ===
-    # These calculations need to happen after duplication to work per-spline
-    index = nodes.new('GeometryNodeInputIndex')
-    index.location = (200, -200)
+    # === TRANSFORM PER SPLINE (SIMPLE APPROACH) ===
+    # For each duplicated spline, apply transform based on spline index
+    spline_index = nodes.new('GeometryNodeInputIndex')
+    spline_index.location = (200, -200)
     
     # Convert angles to radians
     to_radians_fib = nodes.new('ShaderNodeMath')
@@ -379,14 +379,14 @@ def create_root_geometry_nodes():
     to_radians_spread.operation = 'RADIANS'
     links.new(group_input.outputs['Spread Angle'], to_radians_spread.inputs[0])
     
-    # Calculate fibonacci angle for each root
+    # Calculate fibonacci angle for each spline
     mult_angle = nodes.new('ShaderNodeMath')
     mult_angle.location = (400, -250)
     mult_angle.operation = 'MULTIPLY'
-    links.new(index.outputs['Index'], mult_angle.inputs[0])
+    links.new(spline_index.outputs['Index'], mult_angle.inputs[0])
     links.new(to_radians_fib.outputs['Value'], mult_angle.inputs[1])
     
-    # Create radial distribution with spread
+    # Create offset based on spline index for separation
     cos_node = nodes.new('ShaderNodeMath')
     cos_node.location = (600, -200)
     cos_node.operation = 'COSINE'
@@ -397,32 +397,33 @@ def create_root_geometry_nodes():
     sin_node.operation = 'SINE'
     links.new(mult_angle.outputs['Value'], sin_node.inputs[0])
     
-    # Apply spread angle
-    mult_cos_spread = nodes.new('ShaderNodeMath')
-    mult_cos_spread.location = (800, -200)
-    mult_cos_spread.operation = 'MULTIPLY'
-    links.new(cos_node.outputs['Value'], mult_cos_spread.inputs[0])
-    links.new(to_radians_spread.outputs['Value'], mult_cos_spread.inputs[1])
+    # Apply spread and separation
+    mult_cos_sep = nodes.new('ShaderNodeMath')
+    mult_cos_sep.location = (800, -200)
+    mult_cos_sep.operation = 'MULTIPLY'
+    links.new(cos_node.outputs['Value'], mult_cos_sep.inputs[0])
+    links.new(group_input.outputs['Separation'], mult_cos_sep.inputs[1])
     
-    mult_sin_spread = nodes.new('ShaderNodeMath')
-    mult_sin_spread.location = (800, -300)
-    mult_sin_spread.operation = 'MULTIPLY'
-    links.new(sin_node.outputs['Value'], mult_sin_spread.inputs[0])
-    links.new(to_radians_spread.outputs['Value'], mult_sin_spread.inputs[1])
+    mult_sin_sep = nodes.new('ShaderNodeMath')
+    mult_sin_sep.location = (800, -300)
+    mult_sin_sep.operation = 'MULTIPLY'
+    links.new(sin_node.outputs['Value'], mult_sin_sep.inputs[0])
+    links.new(group_input.outputs['Separation'], mult_sin_sep.inputs[1])
     
-    # Combine into vector
-    combine_fib = nodes.new('ShaderNodeCombineXYZ')
-    combine_fib.location = (1000, -250)
-    links.new(mult_cos_spread.outputs['Value'], combine_fib.inputs['X'])
-    links.new(mult_sin_spread.outputs['Value'], combine_fib.inputs['Y'])
-    combine_fib.inputs['Z'].default_value = 0
+    # Combine into offset vector
+    combine_offset = nodes.new('ShaderNodeCombineXYZ')
+    combine_offset.location = (1000, -250)
+    links.new(mult_cos_sep.outputs['Value'], combine_offset.inputs['X'])
+    links.new(mult_sin_sep.outputs['Value'], combine_offset.inputs['Y'])
+    combine_offset.inputs['Z'].default_value = 0
     
-    # Scale by separation
+    # This is our base separation offset
     scale_sep = nodes.new('ShaderNodeVectorMath')
     scale_sep.location = (1200, -250)
     scale_sep.operation = 'SCALE'
-    links.new(combine_fib.outputs['Vector'], scale_sep.inputs[0])
-    links.new(group_input.outputs['Separation'], scale_sep.inputs['Scale'])
+    links.new(combine_offset.outputs['Vector'], scale_sep.inputs[0])
+    # Scale factor to adjust overall separation
+    scale_sep.inputs['Scale'].default_value = 1.0
 
     # === INDIVIDUAL GROWTH (SIMPLIFIED) ===
 
@@ -430,7 +431,7 @@ def create_root_geometry_nodes():
     modulo = nodes.new('ShaderNodeMath')
     modulo.location = (-1200, -100)
     modulo.operation = 'MODULO'
-    links.new(index.outputs['Index'], modulo.inputs[0])
+    links.new(spline_index.outputs['Index'], modulo.inputs[0])
     modulo.inputs[1].default_value = 5.0 # Cycle through 5 growth values
 
     # Compare nodes to check which root index it is
@@ -534,46 +535,28 @@ def create_root_geometry_nodes():
     links.new(mix_g_combined.outputs['Result'], final_growth_factor.inputs[0])
     links.new(switch_g5.outputs['Output'], final_growth_factor.inputs[1])
 
-    # === ORGANIC NOISE DEFORMATION ===
+    # === ORGANIC NOISE DEFORMATION (SIMPLIFIED) ===
     noise = nodes.new('ShaderNodeTexNoise')
-    noise.location = (-600, -500)
+    noise.location = (1400, -500)
     noise.noise_dimensions = '3D'
     links.new(group_input.outputs['Noise Scale'], noise.inputs['Scale'])
     noise.inputs['Detail'].default_value = 3.0
     noise.inputs['Roughness'].default_value = 0.7
     
     position = nodes.new('GeometryNodeInputPosition')
-    position.location = (-800, -500)
+    position.location = (1200, -500)
     links.new(position.outputs['Position'], noise.inputs['Vector'])
     
     # Center noise around 0
     subtract = nodes.new('ShaderNodeVectorMath')
-    subtract.location = (-400, -500)
+    subtract.location = (1600, -500)
     subtract.operation = 'SUBTRACT'
     subtract.inputs[1].default_value = (0.5, 0.5, 0.5)
     links.new(noise.outputs['Color'], subtract.inputs[0])
     
-    # Scale noise by roughness and position along spline
-    spline_param = nodes.new('GeometryNodeSplineParameter')
-    spline_param.location = (-600, -600)
-    
-    # Reduce noise at base, increase towards tip
-    mult_noise_factor = nodes.new('ShaderNodeMath')
-    mult_noise_factor.location = (-400, -600)
-    mult_noise_factor.operation = 'MULTIPLY'
-    links.new(spline_param.outputs['Factor'], mult_noise_factor.inputs[0])
-    mult_noise_factor.inputs[1].default_value = 0.8
-    
-    # Add base noise strength
-    add_base_noise = nodes.new('ShaderNodeMath')
-    add_base_noise.location = (-200, -600)
-    add_base_noise.operation = 'ADD'
-    links.new(mult_noise_factor.outputs['Value'], add_base_noise.inputs[0])
-    add_base_noise.inputs[1].default_value = 0.2
-    
-    # Final noise scaling
+    # Scale noise directly by roughness
     scale_noise = nodes.new('ShaderNodeVectorMath')
-    scale_noise.location = (-200, -500)
+    scale_noise.location = (1800, -500)
     scale_noise.operation = 'SCALE'
     links.new(subtract.outputs['Vector'], scale_noise.inputs[0])
     links.new(group_input.outputs['Roughness'], scale_noise.inputs['Scale'])
@@ -584,21 +567,21 @@ def create_root_geometry_nodes():
 
     # === SET POSITION WITH ALL DEFORMATIONS ===
     add_offsets = nodes.new('ShaderNodeVectorMath')
-    add_offsets.location = (600, -250)
+    add_offsets.location = (2000, -250)
     add_offsets.operation = 'ADD'
     links.new(scale_sep.outputs['Vector'], add_offsets.inputs[0])
     links.new(scale_noise.outputs['Vector'], add_offsets.inputs[1])
 
     # Apply individual growth factor to offset
     scale_offset_by_growth = nodes.new('ShaderNodeVectorMath')
-    scale_offset_by_growth.location = (700, -100)
+    scale_offset_by_growth.location = (2200, -100)
     scale_offset_by_growth.operation = 'SCALE'
     links.new(add_offsets.outputs['Vector'], scale_offset_by_growth.inputs[0])
     links.new(final_growth_factor.outputs['Result'], scale_offset_by_growth.inputs['Scale'])
 
     # Apply position offsets to each duplicated spline
     set_position = nodes.new('GeometryNodeSetPosition')
-    set_position.location = (800, 0)
+    set_position.location = (2400, 0)
     set_position.domain = 'POINT'  # Apply to points, not entire geometry
     links.new(duplicate.outputs['Geometry'], set_position.inputs['Geometry'])
     links.new(scale_offset_by_growth.outputs['Vector'], set_position.inputs['Offset'])
@@ -607,29 +590,29 @@ def create_root_geometry_nodes():
 
     # === TAPERING ===
     set_radius = nodes.new('GeometryNodeSetCurveRadius')
-    set_radius.location = (1000, 0)
+    set_radius.location = (2600, 0)
     links.new(set_position.outputs['Geometry'], set_radius.inputs['Curve'])
     
     # Create taper from base to tip
     spline_param_taper = nodes.new('GeometryNodeSplineParameter')
-    spline_param_taper.location = (800, -200)
+    spline_param_taper.location = (2400, -200)
     
     # Invert for thick base, thin tip
     invert_taper = nodes.new('ShaderNodeMath')
-    invert_taper.location = (1000, -200)
+    invert_taper.location = (2600, -200)
     invert_taper.operation = 'SUBTRACT'
     invert_taper.inputs[0].default_value = 1.0
     links.new(spline_param_taper.outputs['Factor'], invert_taper.inputs[1])
     
     # Power for more natural taper
     power_taper = nodes.new('ShaderNodeMath')
-    power_taper.location = (1200, -200)
+    power_taper.location = (2800, -200)
     power_taper.operation = 'POWER'
     links.new(invert_taper.outputs['Value'], power_taper.inputs[0])
     power_taper.inputs[1].default_value = 1.5  # Exponent for taper curve
     
     mult_width = nodes.new('ShaderNodeMath')
-    mult_width.location = (1400, -200)
+    mult_width.location = (3000, -200)
     mult_width.operation = 'MULTIPLY'
     links.new(group_input.outputs['Base Width'], mult_width.inputs[0])
     links.new(power_taper.outputs['Value'], mult_width.inputs[1])
@@ -637,10 +620,10 @@ def create_root_geometry_nodes():
     
     # Convert to mesh
     to_mesh = nodes.new('GeometryNodeCurveToMesh')
-    to_mesh.location = (1600, 0)
+    to_mesh.location = (3200, 0)
     
     circle = nodes.new('GeometryNodeCurvePrimitiveCircle')
-    circle.location = (1400, -100)
+    circle.location = (3000, -100)
     circle.inputs['Resolution'].default_value = 8
     links.new(set_radius.outputs['Curve'], to_mesh.inputs['Curve'])
     links.new(circle.outputs['Curve'], to_mesh.inputs['Profile Curve'])
