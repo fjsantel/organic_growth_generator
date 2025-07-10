@@ -824,7 +824,7 @@ def create_root_geometry_nodes():
     # Random directions for hair-like roots
     random_dir = nodes.new('FunctionNodeRandomValue')
     random_dir.location = (3200, -1100)
-    random_dir.data_type = 'VECTOR'
+    random_dir.data_type = 'FLOAT_VECTOR'
     random_dir.inputs['Min'].default_value = (-1, -1, -1)
     random_dir.inputs['Max'].default_value = (1, 1, 0)  # Tend downward
     
