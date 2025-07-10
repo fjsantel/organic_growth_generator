@@ -582,7 +582,6 @@ def create_root_geometry_nodes():
     # Apply position offsets to each duplicated spline
     set_position = nodes.new('GeometryNodeSetPosition')
     set_position.location = (2400, 0)
-    set_position.domain = 'POINT'  # Apply to points, not entire geometry
     links.new(duplicate.outputs['Geometry'], set_position.inputs['Geometry'])
     links.new(scale_offset_by_growth.outputs['Vector'], set_position.inputs['Offset'])
 
