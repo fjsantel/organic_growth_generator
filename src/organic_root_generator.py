@@ -282,26 +282,73 @@ def create_root_geometry_nodes():
         socket = node_tree.interface.new_socket(name=name, in_out='INPUT', socket_type=socket_type)
         socket.default_value = default
 
-    # === MAIN ROOTS - CORRECTED GROWTH DIRECTION ===
-    # Create initial line pointing DOWN
+    # === MAIN ROOTS - GROWTH DIRECTION SYSTEM ===
+    # Create initial line
     curve_line = nodes.new('GeometryNodeCurvePrimitiveLine')
     curve_line.location = (-1600, 0)
     
-    # Combine for end point - NEGATIVE Z for downward growth
-    combine_end = nodes.new('ShaderNodeCombineXYZ')
-    combine_end.location = (-1800, -100)
-    combine_end.inputs['X'].default_value = 0
-    combine_end.inputs['Y'].default_value = 0
+    # Growth direction switch nodes
+    switch_down = nodes.new('GeometryNodeSwitch')
+    switch_down.location = (-1800, -200)
+    switch_down.input_type = 'VECTOR'
     
-    # Negate length for downward growth
+    switch_up = nodes.new('GeometryNodeSwitch')
+    switch_up.location = (-1800, -300)
+    switch_up.input_type = 'VECTOR'
+    
+    # Direction vectors
+    # DOWN (0): (0, 0, -length)
     negate_length = nodes.new('ShaderNodeMath')
-    negate_length.location = (-1900, -100)
+    negate_length.location = (-2000, -200)
     negate_length.operation = 'MULTIPLY'
     links.new(group_input.outputs['Length'], negate_length.inputs[0])
-    negate_length.inputs[1].default_value = -1.0  # Negative for down
+    negate_length.inputs[1].default_value = -1.0
     
-    links.new(negate_length.outputs['Value'], combine_end.inputs['Z'])
-    links.new(combine_end.outputs['Vector'], curve_line.inputs['End'])
+    combine_down = nodes.new('ShaderNodeCombineXYZ')
+    combine_down.location = (-1900, -200)
+    combine_down.inputs['X'].default_value = 0
+    combine_down.inputs['Y'].default_value = 0
+    links.new(negate_length.outputs['Value'], combine_down.inputs['Z'])
+    
+    # UP (1): (0, 0, length)
+    combine_up = nodes.new('ShaderNodeCombineXYZ')
+    combine_up.location = (-1900, -300)
+    combine_up.inputs['X'].default_value = 0
+    combine_up.inputs['Y'].default_value = 0
+    links.new(group_input.outputs['Length'], combine_up.inputs['Z'])
+    
+    # RADIAL (2): (length, 0, 0) - will be rotated later
+    combine_radial = nodes.new('ShaderNodeCombineXYZ')
+    combine_radial.location = (-1900, -400)
+    links.new(group_input.outputs['Length'], combine_radial.inputs['X'])
+    combine_radial.inputs['Y'].default_value = 0
+    combine_radial.inputs['Z'].default_value = 0
+    
+    # Compare growth direction
+    compare_down = nodes.new('ShaderNodeMath')
+    compare_down.location = (-1700, -150)
+    compare_down.operation = 'COMPARE'
+    links.new(group_input.outputs['Growth Direction'], compare_down.inputs[0])
+    compare_down.inputs[1].default_value = 0.0  # DOWN
+    compare_down.inputs[2].default_value = 0.001
+    
+    compare_up = nodes.new('ShaderNodeMath')
+    compare_up.location = (-1700, -250)
+    compare_up.operation = 'COMPARE'
+    links.new(group_input.outputs['Growth Direction'], compare_up.inputs[0])
+    compare_up.inputs[1].default_value = 1.0  # UP
+    compare_up.inputs[2].default_value = 0.001
+    
+    # Switch between directions
+    links.new(compare_down.outputs['Value'], switch_down.inputs['Switch'])
+    links.new(combine_down.outputs['Vector'], switch_down.inputs['True'])
+    links.new(combine_up.outputs['Vector'], switch_down.inputs['False'])
+    
+    links.new(compare_up.outputs['Value'], switch_up.inputs['Switch'])
+    links.new(switch_down.outputs['Output'], switch_up.inputs['False'])
+    links.new(combine_radial.outputs['Vector'], switch_up.inputs['True'])
+    
+    links.new(switch_up.outputs['Output'], curve_line.inputs['End'])
     
     # Resample for smoothness
     resample = nodes.new('GeometryNodeResampleCurve')
@@ -492,7 +539,7 @@ def create_root_geometry_nodes():
     links.new(mix_g_combined.outputs['Result'], final_growth_factor.inputs[0])
     links.new(switch_g5.outputs['Output'], final_growth_factor.inputs[1])
 
-    links.new(final_growth_factor.outputs['Value'], store_growth.inputs['Value'])
+    links.new(final_growth_factor.outputs['Result'], store_growth.inputs['Value'])
 
     # === ORGANIC NOISE DEFORMATION ===
     noise = nodes.new('ShaderNodeTexNoise')
@@ -538,7 +585,7 @@ def create_root_geometry_nodes():
     links.new(subtract.outputs['Vector'], scale_noise.inputs[0])
     links.new(group_input.outputs['Roughness'], scale_noise.inputs['Scale'])
 
-    # === ROTATION FOR SPREAD ===
+    # === ROTATION FOR SPREAD AND DIRECTION ===
     # Create rotation based on spread angle and index
     rotation_z = nodes.new('ShaderNodeCombineXYZ')
     rotation_z.location = (0, -400)
@@ -546,182 +593,98 @@ def create_root_geometry_nodes():
     rotation_z.inputs['Y'].default_value = 0
     links.new(mult_angle.outputs['Value'], rotation_z.inputs['Z'])
     
+    # Apply spread rotation based on direction
+    spread_rotation_x = nodes.new('ShaderNodeCombineXYZ')
+    spread_rotation_x.location = (0, -350)
+    
+    # For DOWN/UP: spread in X direction
+    # For RADIAL: no additional spread needed (already handled by fibonacci)
+    compare_radial = nodes.new('ShaderNodeMath')
+    compare_radial.location = (-200, -350)
+    compare_radial.operation = 'COMPARE'
+    links.new(group_input.outputs['Growth Direction'], compare_radial.inputs[0])
+    compare_radial.inputs[1].default_value = 2.0  # RADIAL
+    compare_radial.inputs[2].default_value = 0.001
+    
+    # Switch spread rotation based on direction
+    switch_spread = nodes.new('GeometryNodeSwitch')
+    switch_spread.location = (200, -350)
+    switch_spread.input_type = 'VECTOR'
+    links.new(compare_radial.outputs['Value'], switch_spread.inputs['Switch'])
+    
+    # Non-radial spread
+    links.new(to_radians_spread.outputs['Value'], spread_rotation_x.inputs['X'])
+    spread_rotation_x.inputs['Y'].default_value = 0
+    spread_rotation_x.inputs['Z'].default_value = 0
+    
+    # No spread for radial (use fibonacci only)
+    no_spread = nodes.new('ShaderNodeCombineXYZ')
+    no_spread.location = (0, -450)
+    no_spread.inputs['X'].default_value = 0
+    no_spread.inputs['Y'].default_value = 0
+    no_spread.inputs['Z'].default_value = 0
+    
+    links.new(spread_rotation_x.outputs['Vector'], switch_spread.inputs['False'])
+    links.new(no_spread.outputs['Vector'], switch_spread.inputs['True'])
+    
+    # Combined rotation
     rotate_euler = nodes.new('FunctionNodeRotateEuler')
-    rotate_euler.location = (200, -400)
-    rotate_euler.inputs['Rotate By'].default_value = (0, 0, 0)
-    links.new(rotation_z.outputs['Vector'], rotate_euler.inputs['Rotate By'])
-    
-    # Apply spread in X direction based on spread angle
-    spread_rotation = nodes.new('ShaderNodeCombineXYZ')
-    spread_rotation.location = (0, -350)
-    links.new(to_radians_spread.outputs['Value'], spread_rotation.inputs['X'])
-    spread_rotation.inputs['Y'].default_value = 0
-    spread_rotation.inputs['Z'].default_value = 0
-    
-    # === INDIVIDUAL GROWTH (SIMPLIFIED) ===
-    # Store named attribute for growth
-    store_growth = nodes.new('GeometryNodeStoreNamedAttribute')
-    store_growth.location = (-1000, 0)
-    store_growth.data_type = 'FLOAT'
-    store_growth.inputs['Name'].default_value = "growth_factor"
-    links.new(duplicate.outputs['Geometry'], store_growth.inputs['Geometry'])
-
-    # Get growth values based on index
-    modulo = nodes.new('ShaderNodeMath')
-    modulo.location = (-1200, -100)
-    modulo.operation = 'MODULO'
-    links.new(index.outputs['Index'], modulo.inputs[0])
-    modulo.inputs[1].default_value = 5.0 # Cycle through 5 growth values
-
-    # Compare nodes to check which root index it is
-    compare_0 = nodes.new('ShaderNodeMath')
-    compare_0.operation = 'COMPARE'
-    compare_0.location = (-800, 150)
-    compare_0.inputs[1].default_value = 0.0 # Value2
-    compare_0.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-    links.new(modulo.outputs['Value'], compare_0.inputs[0])
-
-    compare_1 = nodes.new('ShaderNodeMath')
-    compare_1.operation = 'COMPARE'
-    compare_1.location = (-800, 100)
-    compare_1.inputs[1].default_value = 1.0 # Value2
-    compare_1.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-    links.new(modulo.outputs['Value'], compare_1.inputs[0])
-
-    compare_2 = nodes.new('ShaderNodeMath')
-    compare_2.operation = 'COMPARE'
-    compare_2.location = (-800, 50)
-    compare_2.inputs[1].default_value = 2.0 # Value2
-    compare_2.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-    links.new(modulo.outputs['Value'], compare_2.inputs[0])
-
-    compare_3 = nodes.new('ShaderNodeMath')
-    compare_3.operation = 'COMPARE'
-    compare_3.location = (-800, 0)
-    compare_3.inputs[1].default_value = 3.0 # Value2
-    compare_3.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-    links.new(modulo.outputs['Value'], compare_3.inputs[0])
-
-    compare_4 = nodes.new('ShaderNodeMath')
-    compare_4.operation = 'COMPARE'
-    compare_4.location = (-800, -50)
-    compare_4.inputs[1].default_value = 4.0 # Value2
-    compare_4.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-    links.new(modulo.outputs['Value'], compare_4.inputs[0])
-
-    # Switch nodes for each growth property
-    switch_g1 = nodes.new('GeometryNodeSwitch')
-    switch_g1.location = (-600, 150)
-    switch_g1.input_type = 'FLOAT'
-    links.new(group_input.outputs['Individual Growth'], switch_g1.inputs['Switch'])
-    switch_g1.inputs['False'].default_value = 1.0
-    links.new(group_input.outputs['Growth 1'], switch_g1.inputs['True'])
-
-    switch_g2 = nodes.new('GeometryNodeSwitch')
-    switch_g2.location = (-600, 100)
-    switch_g2.input_type = 'FLOAT'
-    links.new(group_input.outputs['Individual Growth'], switch_g2.inputs['Switch'])
-    switch_g2.inputs['False'].default_value = 1.0
-    links.new(group_input.outputs['Growth 2'], switch_g2.inputs['True'])
-
-    switch_g3 = nodes.new('GeometryNodeSwitch')
-    switch_g3.location = (-600, 50)
-    switch_g3.input_type = 'FLOAT'
-    links.new(group_input.outputs['Individual Growth'], switch_g3.inputs['Switch'])
-    switch_g3.inputs['False'].default_value = 1.0
-    links.new(group_input.outputs['Growth 3'], switch_g3.inputs['True'])
-
-    switch_g4 = nodes.new('GeometryNodeSwitch')
-    switch_g4.location = (-600, 0)
-    switch_g4.input_type = 'FLOAT'
-    links.new(group_input.outputs['Individual Growth'], switch_g4.inputs['Switch'])
-    switch_g4.inputs['False'].default_value = 1.0
-    links.new(group_input.outputs['Growth 4'], switch_g4.inputs['True'])
-
-    switch_g5 = nodes.new('GeometryNodeSwitch')
-    switch_g5.location = (-600, -50)
-    switch_g5.input_type = 'FLOAT'
-    links.new(group_input.outputs['Individual Growth'], switch_g5.inputs['Switch'])
-    switch_g5.inputs['False'].default_value = 1.0
-    links.new(group_input.outputs['Growth 5'], switch_g5.inputs['True'])
-
-    # Combine growth values using a series of Mix nodes
-    mix_g1_g2 = nodes.new('ShaderNodeMix')
-    mix_g1_g2.location = (-400, 100)
-    mix_g1_g2.data_type = 'FLOAT'
-    links.new(compare_0.outputs['Value'], mix_g1_g2.inputs['Factor'])
-    links.new(switch_g1.outputs['Output'], mix_g1_g2.inputs[0])
-    links.new(switch_g2.outputs['Output'], mix_g1_g2.inputs[1])
-
-    mix_g3_g4 = nodes.new('ShaderNodeMix')
-    mix_g3_g4.location = (-400, 0)
-    mix_g3_g4.data_type = 'FLOAT'
-    links.new(compare_2.outputs['Value'], mix_g3_g4.inputs['Factor'])
-    links.new(switch_g3.outputs['Output'], mix_g3_g4.inputs[0])
-    links.new(switch_g4.outputs['Output'], mix_g3_g4.inputs[1])
-
-    mix_g_combined = nodes.new('ShaderNodeMix')
-    mix_g_combined.location = (-200, 50)
-    mix_g_combined.data_type = 'FLOAT'
-    links.new(compare_1.outputs['Value'], mix_g_combined.inputs['Factor'])
-    links.new(mix_g1_g2.outputs['Result'], mix_g_combined.inputs[0])
-    links.new(mix_g3_g4.outputs['Result'], mix_g_combined.inputs[1])
-
-    final_growth_factor = nodes.new('ShaderNodeMix')
-    final_growth_factor.location = (0, 0)
-    final_growth_factor.data_type = 'FLOAT'
-    links.new(compare_4.outputs['Value'], final_growth_factor.inputs['Factor'])
-    links.new(mix_g_combined.outputs['Result'], final_growth_factor.inputs[0])
-    links.new(switch_g5.outputs['Output'], final_growth_factor.inputs[1])
-
-    links.new(final_growth_factor.outputs['Result'], store_growth.inputs['Value'])
+    rotate_euler.location = (400, -400)
+    links.new(rotation_z.outputs['Vector'], rotate_euler.inputs['Rotation'])
+    links.new(switch_spread.outputs['Output'], rotate_euler.inputs['Rotate By'])
 
     # === SET POSITION WITH ALL DEFORMATIONS ===
     add_offsets = nodes.new('ShaderNodeVectorMath')
-    add_offsets.location = (400, -250)
+    add_offsets.location = (600, -250)
     add_offsets.operation = 'ADD'
     links.new(scale_sep.outputs['Vector'], add_offsets.inputs[0])
     links.new(scale_noise.outputs['Vector'], add_offsets.inputs[1])
 
     # Apply individual growth factor to offset
     scale_offset_by_growth = nodes.new('ShaderNodeVectorMath')
-    scale_offset_by_growth.location = (500, -100)
+    scale_offset_by_growth.location = (700, -100)
     scale_offset_by_growth.operation = 'SCALE'
     links.new(add_offsets.outputs['Vector'], scale_offset_by_growth.inputs[0])
     links.new(final_growth_factor.outputs['Result'], scale_offset_by_growth.inputs['Scale'])
 
+    # Apply rotations for different growth directions
+    rotate_position = nodes.new('FunctionNodeRotateEuler')
+    rotate_position.location = (800, -150)
+    links.new(scale_offset_by_growth.outputs['Vector'], rotate_position.inputs['Vector'])
+    links.new(rotate_euler.outputs['Vector'], rotate_position.inputs['Rotation'])
+
     set_position = nodes.new('GeometryNodeSetPosition')
-    set_position.location = (600, 0)
-    links.new(duplicate.outputs['Geometry'], set_position.inputs['Geometry'])
-    links.new(scale_offset_by_growth.outputs['Vector'], set_position.inputs['Offset'])
+    set_position.location = (900, 0)
+    links.new(store_growth.outputs['Geometry'], set_position.inputs['Geometry'])
+    links.new(rotate_position.outputs['Vector'], set_position.inputs['Offset'])
 
     
 
     # === TAPERING ===
     set_radius = nodes.new('GeometryNodeSetCurveRadius')
-    set_radius.location = (800, 0) # Adjusted location
+    set_radius.location = (1100, 0)
     links.new(set_position.outputs['Geometry'], set_radius.inputs['Curve'])
     
     # Create taper from base to tip
     spline_param_taper = nodes.new('GeometryNodeSplineParameter')
-    spline_param_taper.location = (600, -200)
+    spline_param_taper.location = (900, -200)
     
     # Invert for thick base, thin tip
     invert_taper = nodes.new('ShaderNodeMath')
-    invert_taper.location = (800, -200)
+    invert_taper.location = (1100, -200)
     invert_taper.operation = 'SUBTRACT'
     invert_taper.inputs[0].default_value = 1.0
     links.new(spline_param_taper.outputs['Factor'], invert_taper.inputs[1])
     
     # Power for more natural taper
     power_taper = nodes.new('ShaderNodeMath')
-    power_taper.location = (1000, -200)
+    power_taper.location = (1300, -200)
     power_taper.operation = 'POWER'
     links.new(invert_taper.outputs['Value'], power_taper.inputs[0])
     power_taper.inputs[1].default_value = 1.5  # Exponent for taper curve
     
     mult_width = nodes.new('ShaderNodeMath')
-    mult_width.location = (1200, -200)
+    mult_width.location = (1500, -200)
     mult_width.operation = 'MULTIPLY'
     links.new(group_input.outputs['Base Width'], mult_width.inputs[0])
     links.new(power_taper.outputs['Value'], mult_width.inputs[1])
@@ -729,10 +692,10 @@ def create_root_geometry_nodes():
     
     # Convert to mesh
     to_mesh = nodes.new('GeometryNodeCurveToMesh')
-    to_mesh.location = (1400, 0)
+    to_mesh.location = (1700, 0)
     
     circle = nodes.new('GeometryNodeCurvePrimitiveCircle')
-    circle.location = (1200, -100)
+    circle.location = (1500, -100)
     circle.inputs['Resolution'].default_value = 8
     links.new(set_radius.outputs['Curve'], to_mesh.inputs['Curve'])
     links.new(circle.outputs['Curve'], to_mesh.inputs['Profile Curve'])
