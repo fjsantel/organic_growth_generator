@@ -399,24 +399,38 @@ def create_root_geometry_nodes():
         ('Fibonacci Angle', 'NodeSocketFloat', 137.5),
         ('Separation', 'NodeSocketFloat', 0.2),
         ('Spread Angle', 'NodeSocketFloat', 15.0),
-        ('Growth Direction', 'NodeSocketInt', 0),  # 0=Down, 1=Up, 2=Radial
+        ('Growth Direction', 'NodeSocketInt', 0),  # 0=Down, 1=Up, 2=Radial, 3=Diagonal
         ('Individual Growth', 'NodeSocketBool', False),
-        ('Growth 1', 'NodeSocketFloat', 1.0),
+        ('Growth 1', 'NodeSocketFloat', 0.618),
         ('Growth 2', 'NodeSocketFloat', 1.0),
-        ('Growth 3', 'NodeSocketFloat', 1.0),
-        ('Growth 4', 'NodeSocketFloat', 1.0),
-        ('Growth 5', 'NodeSocketFloat', 1.0),
+        ('Growth 3', 'NodeSocketFloat', 1.618),
+        ('Growth 4', 'NodeSocketFloat', 2.618),
+        ('Growth 5', 'NodeSocketFloat', 4.236),
         ('Enable Secondary', 'NodeSocketBool', True),
-        ('Sec Density', 'NodeSocketFloat', 20.0),
-        ('Sec Length', 'NodeSocketFloat', 1.0),
+        ('Sec Density', 'NodeSocketFloat', 8.0),
+        ('Sec Length', 'NodeSocketFloat', 3.82),
         ('Sec Width', 'NodeSocketFloat', 0.08),
         ('Sec Angle', 'NodeSocketFloat', 45.0),
         ('Enable Tertiary', 'NodeSocketBool', True),
-        ('Ter Density', 'NodeSocketFloat', 15.0),
-        ('Ter Length', 'NodeSocketFloat', 0.3),
+        ('Ter Density', 'NodeSocketFloat', 13.0),
+        ('Ter Length', 'NodeSocketFloat', 2.36),
         ('Ter Width', 'NodeSocketFloat', 0.03),
         ('Enable Leaves', 'NodeSocketBool', False),
         ('Leaf Size', 'NodeSocketFloat', 0.3),
+        
+        # ============= NUEVOS INPUTS FIBONACCI =============
+        ('Control Mode', 'NodeSocketInt', 1),  # 0=Unified, 1=Fibonacci, 2=Individual, 3=Mixed
+        ('Enable Fibonacci Branching', 'NodeSocketBool', True),
+        ('Fibonacci Depth', 'NodeSocketInt', 3),
+        ('Branch Interval', 'NodeSocketInt', 3),
+        ('Auto Fibonacci', 'NodeSocketBool', True),
+        ('Individual Branching', 'NodeSocketBool', False),
+        
+        # Quaternary
+        ('Enable Quaternary', 'NodeSocketBool', False),
+        ('Quat Density', 'NodeSocketFloat', 21.0),
+        ('Quat Length', 'NodeSocketFloat', 1.46),
+        ('Quat Width', 'NodeSocketFloat', 0.018),
         ]
 
         for name, socket_type, default in inputs:
@@ -732,41 +746,42 @@ def create_root_geometry_nodes():
         links.new(point_index.outputs['Index'], modulo.inputs[0])
         modulo.inputs[1].default_value = 5.0 # Cycle through 5 growth values
 
+    # ============= INDIVIDUAL GROWTH LOGIC FIXED =============
     # Compare nodes to check which root index it is
-        compare_0 = nodes.new('ShaderNodeMath')
-        compare_0.operation = 'COMPARE'
+        compare_0 = nodes.new('FunctionNodeCompare')
+        compare_0.operation = 'EQUAL'
+        compare_0.data_type = 'FLOAT'
         compare_0.location = (-800, 150)
-        compare_0.inputs[1].default_value = 0.0 # Value2
-        compare_0.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-        links.new(modulo.outputs['Value'], compare_0.inputs[0])
+        compare_0.inputs['B'].default_value = 0.0  # Para Root 1
+        links.new(modulo.outputs['Value'], compare_0.inputs['A'])
 
-        compare_1 = nodes.new('ShaderNodeMath')
-        compare_1.operation = 'COMPARE'
+        compare_1 = nodes.new('FunctionNodeCompare')
+        compare_1.operation = 'EQUAL'
+        compare_1.data_type = 'FLOAT'
         compare_1.location = (-800, 100)
-        compare_1.inputs[1].default_value = 1.0 # Value2
-        compare_1.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-        links.new(modulo.outputs['Value'], compare_1.inputs[0])
+        compare_1.inputs['B'].default_value = 1.0  # Para Root 2
+        links.new(modulo.outputs['Value'], compare_1.inputs['A'])
 
-        compare_2 = nodes.new('ShaderNodeMath')
-        compare_2.operation = 'COMPARE'
+        compare_2 = nodes.new('FunctionNodeCompare')
+        compare_2.operation = 'EQUAL'
+        compare_2.data_type = 'FLOAT'
         compare_2.location = (-800, 50)
-        compare_2.inputs[1].default_value = 2.0 # Value2
-        compare_2.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-        links.new(modulo.outputs['Value'], compare_2.inputs[0])
+        compare_2.inputs['B'].default_value = 2.0  # Para Root 3
+        links.new(modulo.outputs['Value'], compare_2.inputs['A'])
 
-        compare_3 = nodes.new('ShaderNodeMath')
-        compare_3.operation = 'COMPARE'
+        compare_3 = nodes.new('FunctionNodeCompare')
+        compare_3.operation = 'EQUAL'
+        compare_3.data_type = 'FLOAT'
         compare_3.location = (-800, 0)
-        compare_3.inputs[1].default_value = 3.0 # Value2
-        compare_3.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-        links.new(modulo.outputs['Value'], compare_3.inputs[0])
+        compare_3.inputs['B'].default_value = 3.0  # Para Root 4
+        links.new(modulo.outputs['Value'], compare_3.inputs['A'])
 
-        compare_4 = nodes.new('ShaderNodeMath')
-        compare_4.operation = 'COMPARE'
+        compare_4 = nodes.new('FunctionNodeCompare')
+        compare_4.operation = 'EQUAL'
+        compare_4.data_type = 'FLOAT'
         compare_4.location = (-800, -50)
-        compare_4.inputs[1].default_value = 4.0 # Value2
-        compare_4.inputs[2].default_value = 0.001 # Epsilon for exact comparison
-        links.new(modulo.outputs['Value'], compare_4.inputs[0])
+        compare_4.inputs['B'].default_value = 4.0  # Para Root 5
+        links.new(modulo.outputs['Value'], compare_4.inputs['A'])
 
     # Switch nodes for each growth property
         switch_g1 = nodes.new('GeometryNodeSwitch')
@@ -809,35 +824,35 @@ def create_root_geometry_nodes():
         switch_growth_0 = nodes.new('GeometryNodeSwitch')
         switch_growth_0.location = (-400, 150)
         switch_growth_0.input_type = 'FLOAT'
-        links.new(compare_0.outputs['Value'], switch_growth_0.inputs['Switch'])
+        links.new(compare_0.outputs['Result'], switch_growth_0.inputs['Switch'])
         switch_growth_0.inputs['False'].default_value = 0.0
         links.new(switch_g1.outputs['Output'], switch_growth_0.inputs['True'])
         
         switch_growth_1 = nodes.new('GeometryNodeSwitch')
         switch_growth_1.location = (-400, 100)
         switch_growth_1.input_type = 'FLOAT'
-        links.new(compare_1.outputs['Value'], switch_growth_1.inputs['Switch'])
+        links.new(compare_1.outputs['Result'], switch_growth_1.inputs['Switch'])
         switch_growth_1.inputs['False'].default_value = 0.0
         links.new(switch_g2.outputs['Output'], switch_growth_1.inputs['True'])
         
         switch_growth_2 = nodes.new('GeometryNodeSwitch')
         switch_growth_2.location = (-400, 50)
         switch_growth_2.input_type = 'FLOAT'
-        links.new(compare_2.outputs['Value'], switch_growth_2.inputs['Switch'])
+        links.new(compare_2.outputs['Result'], switch_growth_2.inputs['Switch'])
         switch_growth_2.inputs['False'].default_value = 0.0
         links.new(switch_g3.outputs['Output'], switch_growth_2.inputs['True'])
         
         switch_growth_3 = nodes.new('GeometryNodeSwitch')
         switch_growth_3.location = (-400, 0)
         switch_growth_3.input_type = 'FLOAT'
-        links.new(compare_3.outputs['Value'], switch_growth_3.inputs['Switch'])
+        links.new(compare_3.outputs['Result'], switch_growth_3.inputs['Switch'])
         switch_growth_3.inputs['False'].default_value = 0.0
         links.new(switch_g4.outputs['Output'], switch_growth_3.inputs['True'])
         
         switch_growth_4 = nodes.new('GeometryNodeSwitch')
         switch_growth_4.location = (-400, -50)
         switch_growth_4.input_type = 'FLOAT'
-        links.new(compare_4.outputs['Value'], switch_growth_4.inputs['Switch'])
+        links.new(compare_4.outputs['Result'], switch_growth_4.inputs['Switch'])
         switch_growth_4.inputs['False'].default_value = 0.0
         links.new(switch_g5.outputs['Output'], switch_growth_4.inputs['True'])
         
@@ -1165,6 +1180,95 @@ def create_root_geometry_nodes():
         links.new(set_radius_ter.outputs['Curve'], to_mesh_ter.inputs['Curve'])
         links.new(circle_ter.outputs['Curve'], to_mesh_ter.inputs['Profile Curve'])
 
+    # === QUATERNARY ROOTS (NIVEL 4) ===
+    # Solo si Fibonacci Depth >= 4 y Enable Quaternary está activado
+        # Check if quaternary should be enabled
+        quaternary_depth_check = nodes.new('ShaderNodeMath')
+        quaternary_depth_check.location = (4200, -1200)
+        quaternary_depth_check.operation = 'GREATER_THAN'
+        links.new(group_input.outputs['Fibonacci Depth'], quaternary_depth_check.inputs[0])
+        quaternary_depth_check.inputs[1].default_value = 3.5  # >= 4
+        
+        # Combine with Enable Quaternary
+        quaternary_enable = nodes.new('FunctionNodeBooleanMath')
+        quaternary_enable.location = (4400, -1200)
+        quaternary_enable.operation = 'AND'
+        links.new(quaternary_depth_check.outputs['Value'], quaternary_enable.inputs[0])
+        links.new(group_input.outputs['Enable Quaternary'], quaternary_enable.inputs[1])
+        
+        # Quaternary root points from tertiary roots
+        curve_to_points_quat = nodes.new('GeometryNodeCurveToPoints')
+        curve_to_points_quat.location = (4600, -1000)
+        curve_to_points_quat.mode = 'COUNT'
+        links.new(set_radius_ter.outputs['Curve'], curve_to_points_quat.inputs['Curve'])
+        links.new(group_input.outputs['Quat Density'], curve_to_points_quat.inputs['Count'])
+        
+        # Ultra-thin quaternary curves
+        quat_curve = nodes.new('GeometryNodeCurvePrimitiveLine')
+        quat_curve.location = (4600, -1200)
+        
+        # Random directions for quaternary roots
+        random_dir_quat = nodes.new('FunctionNodeRandomValue')
+        random_dir_quat.location = (4400, -1300)
+        random_dir_quat.data_type = 'FLOAT_VECTOR'
+        random_dir_quat.inputs['Min'].default_value = (-1, -1, -1)
+        random_dir_quat.inputs['Max'].default_value = (1, 1, -0.5)  # Slight downward bias
+        
+        normalize_quat = nodes.new('ShaderNodeVectorMath')
+        normalize_quat.location = (4600, -1300)
+        normalize_quat.operation = 'NORMALIZE'
+        links.new(random_dir_quat.outputs['Value'], normalize_quat.inputs[0])
+        
+        scale_quat = nodes.new('ShaderNodeVectorMath')
+        scale_quat.location = (4800, -1300)
+        scale_quat.operation = 'SCALE'
+        links.new(normalize_quat.outputs['Vector'], scale_quat.inputs[0])
+        links.new(group_input.outputs['Quat Length'], scale_quat.inputs['Scale'])
+        links.new(scale_quat.outputs['Vector'], quat_curve.inputs['End'])
+        
+        # Instance quaternary roots
+        instance_quat = nodes.new('GeometryNodeInstanceOnPoints')
+        instance_quat.location = (5000, -1000)
+        links.new(curve_to_points_quat.outputs['Points'], instance_quat.inputs['Points'])
+        links.new(quat_curve.outputs['Curve'], instance_quat.inputs['Instance'])
+        links.new(quaternary_enable.outputs['Boolean'], instance_quat.inputs['Selection'])
+        
+        realize_quat = nodes.new('GeometryNodeRealizeInstances')
+        realize_quat.location = (5200, -1000)
+        links.new(instance_quat.outputs['Instances'], realize_quat.inputs['Geometry'])
+        
+        # Set quaternary radius
+        set_radius_quat = nodes.new('GeometryNodeSetCurveRadius')
+        set_radius_quat.location = (5400, -1000)
+        links.new(realize_quat.outputs['Geometry'], set_radius_quat.inputs['Curve'])
+        links.new(group_input.outputs['Quat Width'], set_radius_quat.inputs['Radius'])
+        
+        # Convert to mesh
+        to_mesh_quat = nodes.new('GeometryNodeCurveToMesh')
+        to_mesh_quat.location = (5600, -1000)
+        
+        circle_quat = nodes.new('GeometryNodeCurvePrimitiveCircle')
+        circle_quat.location = (5400, -1100)
+        circle_quat.inputs['Resolution'].default_value = 3  # Very simple
+        links.new(set_radius_quat.outputs['Curve'], to_mesh_quat.inputs['Curve'])
+        links.new(circle_quat.outputs['Curve'], to_mesh_quat.inputs['Profile Curve'])
+
+    # === FIBONACCI BRANCHING LOGIC ===
+    # Control branching based on Fibonacci sequence intervals
+        # Branch interval control
+        branch_interval_node = nodes.new('ShaderNodeMath')
+        branch_interval_node.location = (5000, -1400)
+        branch_interval_node.operation = 'MODULO'
+        links.new(group_input.outputs['Branch Interval'], branch_interval_node.inputs[1])
+        
+        # Auto Fibonacci proportions
+        auto_fib_switch = nodes.new('GeometryNodeSwitch')
+        auto_fib_switch.location = (5200, -1400)
+        auto_fib_switch.input_type = 'FLOAT'
+        links.new(group_input.outputs['Auto Fibonacci'], auto_fib_switch.inputs['Switch'])
+        auto_fib_switch.inputs['False'].default_value = 1.0  # Manual control
+        auto_fib_switch.inputs['True'].default_value = 1.618  # Golden ratio
+
     # === LEAVES AT TIPS ===
     # Simple disc leaves at the end of smallest branches
         leaf_mesh = nodes.new('GeometryNodeMeshUVSphere')
@@ -1225,6 +1329,13 @@ def create_root_geometry_nodes():
         links.new(empty_geometry.outputs['Mesh'], switch_tertiary.inputs['False'])  # Empty when disabled
         links.new(to_mesh_ter.outputs['Mesh'], switch_tertiary.inputs['True'])
         
+        switch_quaternary = nodes.new('GeometryNodeSwitch')
+        switch_quaternary.location = (5800, -1000)
+        switch_quaternary.input_type = 'GEOMETRY'
+        links.new(quaternary_enable.outputs['Boolean'], switch_quaternary.inputs['Switch'])
+        links.new(empty_geometry.outputs['Mesh'], switch_quaternary.inputs['False'])  # Empty when disabled
+        links.new(to_mesh_quat.outputs['Mesh'], switch_quaternary.inputs['True'])
+        
         switch_leaves = nodes.new('GeometryNodeSwitch')
         switch_leaves.location = (4400, 400)
         switch_leaves.input_type = 'GEOMETRY'
@@ -1234,17 +1345,18 @@ def create_root_geometry_nodes():
 
     # === FINAL JOIN ===
         join_all = nodes.new('GeometryNodeJoinGeometry')
-        join_all.location = (4800, 0)
+        join_all.location = (6000, 0)
         # Include input geometry so the original object is preserved
         links.new(input_geometry, join_all.inputs['Geometry'])
         links.new(to_mesh.outputs['Mesh'], join_all.inputs['Geometry'])
         links.new(switch_secondary.outputs['Output'], join_all.inputs['Geometry'])
         links.new(switch_tertiary.outputs['Output'], join_all.inputs['Geometry'])
+        links.new(switch_quaternary.outputs['Output'], join_all.inputs['Geometry'])
         links.new(switch_leaves.outputs['Output'], join_all.inputs['Geometry'])
 
     # Merge close vertices
         merge_by_dist = nodes.new('GeometryNodeMergeByDistance')
-        merge_by_dist.location = (5000, 0)
+        merge_by_dist.location = (6200, 0)
         merge_by_dist.inputs['Distance'].default_value = 0.01
         links.new(join_all.outputs['Geometry'], merge_by_dist.inputs['Geometry'])
 
@@ -1326,7 +1438,21 @@ class MESH_OT_add_fibonacci_root_system(Operator):
             'tertiary_length': 'Ter Length',
             'tertiary_width': 'Ter Width',
             'enable_leaves': 'Enable Leaves',
-            'leaf_size': 'Leaf Size'
+            'leaf_size': 'Leaf Size',
+            
+            # ============= NUEVOS MAPPINGS FIBONACCI =============
+            'control_mode': 'Control Mode',
+            'enable_fibonacci_branching': 'Enable Fibonacci Branching',
+            'fibonacci_depth': 'Fibonacci Depth', 
+            'branch_segment_interval': 'Branch Interval',
+            'auto_fibonacci': 'Auto Fibonacci',
+            'individual_branching': 'Individual Branching',
+            
+            # Quaternary
+            'enable_quaternary_roots': 'Enable Quaternary',
+            'quaternary_density': 'Quat Density',
+            'quaternary_length': 'Quat Length',
+            'quaternary_width': 'Quat Width',
         }
 
         for prop_name, socket_name in mapping.items():
@@ -1336,6 +1462,9 @@ class MESH_OT_add_fibonacci_root_system(Operator):
                 if prop_name == 'growth_direction':
                     direction_map = {'DOWN': 0, 'UP': 1, 'RADIAL': 2, 'DIAGONAL': 3, 'MIXED': 4, 'SPIRAL': 5}
                     value = direction_map.get(value, 0)
+                elif prop_name == 'control_mode':
+                    control_map = {'UNIFIED': 0, 'FIBONACCI': 1, 'INDIVIDUAL': 2, 'MIXED': 3}
+                    value = control_map.get(value, 1)
                 modifier[socket_name] = value
 
 class MESH_OT_update_fibonacci_root(Operator):
@@ -1369,8 +1498,14 @@ class VIEW3D_PT_fibonacci_roots(Panel):
 
     def draw(self, context):
         layout = self.layout
-        props = context.scene.fibonacci_roots_props
-
+        scene = context.scene
+        props = scene.fibonacci_roots_props
+        
+        # Verificar que props existe
+        if not props:
+            layout.label(text="Properties not available", icon='ERROR')
+            return
+        
         # Main buttons
         row = layout.row(align=True)
         row.scale_y = 1.5
@@ -1381,74 +1516,95 @@ class VIEW3D_PT_fibonacci_roots(Panel):
         if not (obj and "Fibonacci Roots" in obj.modifiers):
             layout.label(text="Select a Root System", icon='INFO')
             return
-
-        # Main roots
+        
+        # ============= CONTROLES PRINCIPALES =============
         box = layout.box()
-        box.label(text="Main Roots", icon='CURVE_DATA')
-        col = box.column(align=True)
-        col.prop(props, "root_length")
-        col.prop(props, "root_count")
-        col.prop(props, "base_width")
-
-        # Growth Direction
+        box.label(text="Main Roots", icon='OUTLINER_OB_ARMATURE')
+        
+        row = box.row(align=True)
+        row.prop(props, "root_length")
+        row.prop(props, "root_count")
+        row.prop(props, "base_width")
+        
+        box.prop(props, "growth_direction")
+        
+        # ============= CONTROL FIBONACCI =============
         box = layout.box()
-        box.label(text="Growth Direction", icon='DRIVER_DISTANCE')
-        col = box.column(align=True)
-        col.prop(props, "growth_direction", expand=True)
-        col.prop(props, "spread_angle")
-
-        # Fibonacci
+        box.label(text="Fibonacci Control", icon='MESH_DATA')
+        
+        box.prop(props, "control_mode")
+        box.prop(props, "enable_fibonacci_branching")
+        
+        if props.enable_fibonacci_branching:
+            row = box.row(align=True)
+            row.prop(props, "fibonacci_depth")
+            row.prop(props, "branch_segment_interval")
+            box.prop(props, "auto_fibonacci")
+        
+        # ============= RAMIFICACIÓN =============
+        if props.fibonacci_depth >= 2:
+            box = layout.box()
+            box.label(text="Secondary Roots", icon='MESH_MONKEY')
+            box.prop(props, "enable_secondary_roots")
+            
+            if props.enable_secondary_roots:
+                col = box.column(align=True)
+                col.prop(props, "secondary_density")
+                col.prop(props, "secondary_length") 
+                col.prop(props, "secondary_width")
+        
+        if props.fibonacci_depth >= 3:
+            box = layout.box()
+            box.label(text="Tertiary Roots", icon='MESH_ICOSPHERE')
+            box.prop(props, "enable_tertiary_roots")
+            
+            if props.enable_tertiary_roots:
+                col = box.column(align=True)
+                col.prop(props, "tertiary_density")
+                col.prop(props, "tertiary_length")
+                col.prop(props, "tertiary_width")
+        
+        if props.fibonacci_depth >= 4:
+            box = layout.box()
+            box.label(text="Quaternary Roots", icon='MESH_UVSPHERE')
+            box.prop(props, "enable_quaternary_roots")
+            
+            if props.enable_quaternary_roots:
+                col = box.column(align=True)
+                col.prop(props, "quaternary_density")
+                col.prop(props, "quaternary_length")
+                col.prop(props, "quaternary_width")
+        
+        # ============= CONTROL INDIVIDUAL =============
+        if props.control_mode in ['INDIVIDUAL', 'MIXED']:
+            box = layout.box()
+            box.label(text="Individual Growth", icon='MODIFIER')
+            box.prop(props, "enable_individual_growth")
+            
+            if props.enable_individual_growth:
+                col = box.column(align=True)
+                col.prop(props, "root_growth_1")
+                col.prop(props, "root_growth_2") 
+                col.prop(props, "root_growth_3")
+                col.prop(props, "root_growth_4")
+                col.prop(props, "root_growth_5")
+                
+                box.prop(props, "individual_branching")
+        
+        # ============= PARÁMETROS ORGÁNICOS =============
         box = layout.box()
-        box.label(text="Fibonacci Pattern", icon='FORCE_VORTEX')
+        box.label(text="Organic Parameters", icon='FORCE_TURBULENCE')
+        
         col = box.column(align=True)
         col.prop(props, "fibonacci_angle")
         col.prop(props, "root_separation")
-
-        # Deformation
-        box = layout.box()
-        box.label(text="Organic Deformation", icon='MOD_NOISE')
-        col = box.column(align=True)
-        col.prop(props, "noise_scale")
-        col.prop(props, "roughness")
-
-        # Individual growth
-        box = layout.box()
-        row = box.row()
-        row.prop(props, "enable_individual_growth", text="")
-        row.label(text="Individual Growth", icon='GRAPH')
-
-        if props.enable_individual_growth:
-            col = box.column(align=True)
-            for i in range(1, min(props.root_count + 1, 6)):
-                col.prop(props, f"root_growth_{i}", slider=True)
-
-        # Secondary roots
-        box = layout.box()
-        row = box.row()
-        row.prop(props, "enable_secondary_roots", text="")
-        row.label(text="Secondary Roots", icon='PARTICLES')
-
-        if props.enable_secondary_roots:
-            col = box.column(align=True)
-            col.prop(props, "secondary_density")
-            col.prop(props, "secondary_length")
-            col.prop(props, "secondary_width")
-            col.prop(props, "secondary_angle")
-
-            # Tertiary roots (nested)
-            box_ter = col.box()
-            row_ter = box_ter.row()
-            row_ter.prop(props, "enable_tertiary_roots", text="")
-            row_ter.label(text="Tertiary Roots", icon='PARTICLES')
-
-            if props.enable_tertiary_roots:
-                col_ter = box_ter.column(align=True)
-                col_ter.prop(props, "tertiary_density")
-                col_ter.prop(props, "tertiary_length")
-                col_ter.prop(props, "tertiary_width")
-
-
-        # Leaves
+        col.prop(props, "spread_angle")
+        
+        row = box.row(align=True)
+        row.prop(props, "noise_scale")
+        row.prop(props, "roughness")
+        
+        # ============= HOJAS =============
         box = layout.box()
         row = box.row()
         row.prop(props, "enable_leaves", text="")
