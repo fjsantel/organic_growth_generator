@@ -739,12 +739,20 @@ def create_root_geometry_nodes():
 
     # === INDIVIDUAL GROWTH (SIMPLIFIED) ===
 
-    # Get growth values based on index
+    # === ENHANCED INDIVIDUAL GROWTH FOR UNLIMITED ROOTS ===
+    # Get growth values based on index with dynamic scaling
         modulo = nodes.new('ShaderNodeMath')
         modulo.location = (-1200, -100)
         modulo.operation = 'MODULO'
         links.new(point_index.outputs['Index'], modulo.inputs[0])
-        modulo.inputs[1].default_value = 5.0 # Cycle through 5 growth values
+        # Dynamic modulo based on root count for infinite scalability
+        clamp_count = nodes.new('ShaderNodeClamp')
+        clamp_count.location = (-1300, -100)
+        clamp_count.clamp_type = 'MINMAX'
+        links.new(group_input.outputs['Count'], clamp_count.inputs['Value'])
+        clamp_count.inputs['Min'].default_value = 5.0  # Minimum 5 for growth patterns
+        clamp_count.inputs['Max'].default_value = 100.0  # Maximum for performance
+        links.new(clamp_count.outputs['Result'], modulo.inputs[1])
 
     # ============= INDIVIDUAL GROWTH LOGIC FIXED =============
     # Compare nodes to check which root index it is
@@ -1253,21 +1261,37 @@ def create_root_geometry_nodes():
         links.new(set_radius_quat.outputs['Curve'], to_mesh_quat.inputs['Curve'])
         links.new(circle_quat.outputs['Curve'], to_mesh_quat.inputs['Profile Curve'])
 
-    # === FIBONACCI BRANCHING LOGIC ===
+    # === ENHANCED FIBONACCI BRANCHING LOGIC ===
     # Control branching based on Fibonacci sequence intervals
-        # Branch interval control
+        # Branch interval control with golden ratio progression
         branch_interval_node = nodes.new('ShaderNodeMath')
         branch_interval_node.location = (5000, -1400)
         branch_interval_node.operation = 'MODULO'
         links.new(group_input.outputs['Branch Interval'], branch_interval_node.inputs[1])
         
-        # Auto Fibonacci proportions
+        # Auto Fibonacci proportions with Control Mode integration
+        control_mode_fib = nodes.new('FunctionNodeCompare')
+        control_mode_fib.location = (5000, -1500)
+        control_mode_fib.data_type = 'FLOAT'
+        control_mode_fib.operation = 'EQUAL'
+        links.new(group_input.outputs['Control Mode'], control_mode_fib.inputs['A'])
+        control_mode_fib.inputs['B'].default_value = 1.0  # FIBONACCI mode
+        
+        # Auto Fibonacci proportions switch
         auto_fib_switch = nodes.new('GeometryNodeSwitch')
         auto_fib_switch.location = (5200, -1400)
         auto_fib_switch.input_type = 'FLOAT'
         links.new(group_input.outputs['Auto Fibonacci'], auto_fib_switch.inputs['Switch'])
         auto_fib_switch.inputs['False'].default_value = 1.0  # Manual control
         auto_fib_switch.inputs['True'].default_value = 1.618  # Golden ratio
+        
+        # Control mode override for auto fibonacci
+        control_mode_switch = nodes.new('GeometryNodeSwitch')
+        control_mode_switch.location = (5400, -1400)
+        control_mode_switch.input_type = 'FLOAT'
+        links.new(control_mode_fib.outputs['Result'], control_mode_switch.inputs['Switch'])
+        links.new(auto_fib_switch.outputs['Output'], control_mode_switch.inputs['False'])
+        control_mode_switch.inputs['True'].default_value = 1.618  # Force golden ratio in FIBONACCI mode
 
     # === LEAVES AT TIPS ===
     # Simple disc leaves at the end of smallest branches
